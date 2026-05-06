@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amara - Sécurité féminine</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+  
+<body>
+    <header class="top-header">
+        <div class="brand">
+            <div class="logo-circle">
+                <span>🛡Logo Provisoire🛡</span>
+            </div>
+
+            <div>
+                <h1>Amara</h1>
+                <p>SÉCURITÉ FÉMININE</p>
+            </div>
+        </div>
+
+        <nav class="nav-buttons">
+            <button class="filter-btn active" data-risk="all">Toutes les zones</button>
+            <button class="filter-btn" data-risk="high">Risque élevé</button>
+            <button class="filter-btn" data-risk="medium">À surveiller</button>
+            <button class="filter-btn" data-risk="safe">Sûr</button>
+        </nav>
+
+        <div class="emergency"> Urgence : 3919 · Police : 17 </div>
+    </header>
+
+    <main class="main-layout">
+
+        <section class="map-section">
+            <div id="map"></div>
+
+            <div class="legend">
+                <h3>LÉGENDE</h3>
+
+                <div class="legend-row">
+                    <span class="legend-dot high"></span>
+                    <p>Risque élevé</p>
+                    <strong>5 zones</strong>
+                </div>
+
+                <div class="legend-row">
+                    <span class="legend-dot medium"></span>
+                    <p>À surveiller</p>
+                    <strong>4 zones</strong>
+                </div>
+
+                <div class="legend-row">
+                    <span class="legend-dot safe"></span>
+                    <p>Globalement sûr</p>
+                    <strong>3 zones</strong>
+                </div>
+            </div>
+
+            <div class="map-controls">
+                <button id="zoomIn">＋</button>
+                <button id="zoomOut">－</button>
+                <button id="resetMap">▣</button>
+            </div>
+        </section>
+
+        <aside class="side-panel" id="sidePanel">
+            <button class="close-panel" id="closePanel">×</button>
+
+            <span class="risk-badge" id="panelRisk">À surveiller</span>
+
+            <h2 id="panelTitle">Nation / Cours de Vincennes</h2>
+            <p class="district" id="panelDistrict">11e / 12e · Paris</p>
+
+            <div class="separator"></div>
+
+            <p class="description" id="panelDescription">
+                Zone de transition avec incidents ponctuels de harcèlement aux abords du métro et en soirée.
+            </p>
+
+            <div class="separator"></div>
+
+            <h3 class="advice-title">CONSEILS DE SÉCURITÉ</h3>
+
+            <div id="panelAdvice" class="advice-list">
+                <p>Attention aux abords du métro la nuit</p>
+                <p>Évitez les traversées de parcs isolés</p>
+                <p>Évitez les rues mals éclairées</p>
+            </div>
+
+            <button class="alert-button" id="openAlertModal">
+                Ajouter une alerte
+            </button>
+
+            <div class="footer-emergency">
+                En danger ? 3919 violences · 17 police
+            </div>
+        </aside>
+
+    </main>
+
+    <section class="zones-list-section">
+        <div class="list-header">
+            <div>
+                <h2>Zones signalées</h2>
+                <p>Consultez les zones selon leur niveau de risque.</p>
+            </div>
+
+            <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
+        </div>
+
+        <div class="zones-list" id="zonesList"></div>
+    </section>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <button class="close-modal" id="closeModal">×</button>
+
+            <h2>Ajouter une alerte</h2>
+            <p class="modal-intro"> Signalez une situation pour aider les autres utilisatrices. </p>
+
+            <form id="alertForm">
+                <label for="street">Nom de la rue ou zone</label>
+                <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
+
+                <label for="time">Heure de l’incident</label>
+                <input type="time" id="time" required>
+
+                <label for="riskLevel">Niveau de risque</label>
+                <select id="riskLevel" required>
+                    <option value="">Choisir un niveau</option>
+                    <option value="high">Risque élevé</option>
+                    <option value="medium">À surveiller</option>
+                    <option value="safe">Sûr</option>
+                </select>
+
+                <label for="message">Description courte</label>
+                <textarea id="message" rows="4" placeholder="Décrivez rapidement la situation..." required></textarea>
+
+                <button type="submit">Envoyer l’alerte</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        Alerte ajoutée avec succès.
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
