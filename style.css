@@ -14,8 +14,6 @@ body {
     color: #2d0f28;
 }
 
-/* Navbar générale du site */
-
 .site-navbar {
     height: 82px;
     background-color: #fff1f8;
@@ -84,8 +82,6 @@ body {
     color: #bd5c93;
 }
 
-/* Navbar de la carte */
-
 .map-navbar {
     min-height: 70px;
     background-color: #fff7fc;
@@ -137,8 +133,6 @@ body {
     font-weight: bold;
     white-space: nowrap;
 }
-
-/* Layout carte + panneau */
 
 .main-layout {
     display: grid;
@@ -234,8 +228,6 @@ body {
 .map-controls button:hover {
     background-color: #f5ddec;
 }
-
-/* Panneau latéral */
 
 .side-panel {
     background-color: #fff1f8;
@@ -334,7 +326,115 @@ body {
     font-weight: bold;
 }
 
-/* Liste des zones */
+.route-section {
+    padding: 38px 8%;
+    background-color: #fff7fc;
+    border-top: 1px solid #ead0e2;
+    border-bottom: 1px solid #ead0e2;
+}
+
+.route-header {
+    margin-bottom: 24px;
+}
+
+.route-header h2 {
+    font-family: Georgia, serif;
+    font-size: 32px;
+    color: #2d0f28;
+    margin-bottom: 8px;
+}
+
+.route-header p {
+    color: #74436b;
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.route-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 180px;
+    gap: 16px;
+    align-items: end;
+}
+
+.route-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.route-field label {
+    color: #704166;
+    font-weight: bold;
+}
+
+.route-field input,
+.route-field select {
+    border: 1px solid #e4c2d8;
+    border-radius: 14px;
+    padding: 14px;
+    background-color: white;
+    color: #2d0f28;
+    font-size: 15px;
+}
+
+.route-buttons {
+    grid-column: 1 / 4;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.route-buttons button {
+    border: none;
+    border-radius: 18px;
+    padding: 13px 18px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #bd5c93;
+    color: white;
+}
+
+.route-buttons button:nth-child(2) {
+    background-color: #7c4b75;
+}
+
+.route-buttons button:nth-child(3) {
+    background-color: #f5ddec;
+    color: #7c4b75;
+    border: 1px solid #e4c2d8;
+}
+
+.route-buttons button:hover {
+    opacity: 0.9;
+}
+
+.route-result {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 18px;
+    background-color: #fff1f8;
+    border: 1px solid #ead0e2;
+    color: #74436b;
+    line-height: 1.6;
+}
+
+.route-result.safe {
+    border-color: #c9bced;
+    background-color: #f4f0ff;
+    color: #55429a;
+}
+
+.route-result.warning {
+    border-color: #f2a6ce;
+    background-color: #fff0f7;
+    color: #b32570;
+}
+
+.route-result.loading {
+    color: #7c4b75;
+}
 
 .zones-list-section {
     background-color: #fff7fc;
@@ -448,8 +548,6 @@ body {
     border-color: #c9bced;
 }
 
-/* Sections Conseils et About */
-
 .content-section {
     padding: 60px 8%;
     background-color: #fff7fc;
@@ -500,8 +598,6 @@ body {
 .about-section {
     background-color: #fff1f8;
 }
-
-/* Modal */
 
 .modal-overlay {
     position: fixed;
@@ -612,8 +708,6 @@ form button:hover {
     display: block;
 }
 
-/* Popups Leaflet */
-
 .leaflet-popup-content-wrapper {
     background-color: #fff7fc;
     color: #2d0f28;
@@ -623,8 +717,6 @@ form button:hover {
 .leaflet-popup-tip {
     background-color: #fff7fc;
 }
-
-/* Responsive */
 
 @media screen and (max-width: 1100px) {
     .site-navbar {
@@ -655,6 +747,14 @@ form button:hover {
     .side-panel {
         border-left: none;
         border-top: 1px solid #ead0e2;
+    }
+
+    .route-form {
+        grid-template-columns: 1fr;
+    }
+
+    .route-buttons {
+        grid-column: 1;
     }
 
     .advice-grid {
@@ -728,7 +828,12 @@ form button:hover {
         grid-template-columns: 1fr;
     }
 
-    .content-section {
+    .content-section,
+    .route-section {
         padding: 40px 24px;
+    }
+
+    .route-buttons {
+        flex-direction: column;
     }
 }

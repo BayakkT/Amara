@@ -5,18 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amara - Sécurité féminine</title>
 
-    <!-- Leaflet CSS pour la carte -->
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     >
 
-    <!-- CSS personnel -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Navbar générale du site -->
     <header class="site-navbar">
         <div class="brand">
             <div class="logo-circle">
@@ -31,12 +28,12 @@
 
         <nav class="site-links">
             <a href="#mapSection">Carte</a>
+            <a href="#routePlanner">Itinéraire</a>
             <a href="#securityAdvice">Conseils de sécurité</a>
             <a href="#aboutUs">About us</a>
         </nav>
     </header>
 
-    <!-- Navbar propre à la carte -->
     <nav class="map-navbar">
         <div class="map-filters">
             <button class="filter-btn active" data-risk="all">Toutes les zones</button>
@@ -117,6 +114,47 @@
         </aside>
 
     </main>
+
+    <section class="route-section" id="routePlanner">
+        <div class="route-header">
+            <div>
+                <h2>Consulter un itinéraire</h2>
+                <p>
+                    Choisissez un point de départ et une destination. Amara vérifie si le trajet passe par des zones signalées.
+                </p>
+            </div>
+        </div>
+
+        <form class="route-form" id="routeForm">
+            <div class="route-field">
+                <label for="startInput">Point de départ</label>
+                <input type="text" id="startInput" placeholder="Ex : Gare de Lyon, Paris" required>
+            </div>
+
+            <div class="route-field">
+                <label for="endInput">Destination</label>
+                <input type="text" id="endInput" placeholder="Ex : Châtelet, Paris" required>
+            </div>
+
+            <div class="route-field">
+                <label for="travelMode">Mode</label>
+                <select id="travelMode">
+                    <option value="walk">À pied</option>
+                    <option value="transport">Transport</option>
+                </select>
+            </div>
+
+            <div class="route-buttons">
+                <button type="submit">Vérifier l’itinéraire</button>
+                <button type="button" id="safeRouteButton">Éviter les zones à risque</button>
+                <button type="button" id="clearRouteButton">Effacer</button>
+            </div>
+        </form>
+
+        <div class="route-result" id="routeResult">
+            Aucun itinéraire vérifié pour le moment.
+        </div>
+    </section>
 
     <section class="zones-list-section">
         <div class="list-header">
@@ -233,10 +271,7 @@
         Alerte ajoutée avec succès.
     </div>
 
-    <!-- Leaflet JS pour la carte -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- JS personnel -->
     <script src="script.js"></script>
 </body>
 </html>
