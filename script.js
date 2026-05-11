@@ -238,6 +238,7 @@ function renderMapZones() {
 
         circle.on("click", function() {
             updatePanel(zone);
+            openSidePanel();
         });
 
         circles.push(circle);
@@ -270,7 +271,9 @@ function renderZonesList() {
 
         card.addEventListener("click", function() {
             updatePanel(zone);
+            openSidePanel();
             map.setView(zone.coordinates, 14);
+
             window.scrollTo({
                 top: 0,
                 behavior: "smooth"
@@ -295,9 +298,6 @@ function updatePanel(zone) {
         paragraph.textContent = "◆ " + item;
         adviceContainer.appendChild(paragraph);
     });
-
-    const riskBadge = document.getElementById("panelRisk");
-    riskBadge.className = "risk-badge";
 }
 
 function setupFilters() {
@@ -367,6 +367,11 @@ function setupModal() {
     });
 }
 
+function openSidePanel() {
+    const panel = document.getElementById("sidePanel");
+    panel.style.display = "block";
+}
+
 function setupOtherButtons() {
     document.getElementById("closePanel").addEventListener("click", function() {
         const panel = document.getElementById("sidePanel");
@@ -377,6 +382,7 @@ function setupOtherButtons() {
         currentRisk = "all";
 
         const buttons = document.querySelectorAll(".filter-btn");
+
         buttons.forEach(function(button) {
             button.classList.remove("active");
 
