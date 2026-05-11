@@ -1,31 +1,242 @@
-<header class="site-navbar">
-    <div class="brand">
-        <div class="logo-circle">
-            <span>🛡</span>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amara - Sécurité féminine</title>
+
+    <!-- Leaflet CSS pour la carte -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <!-- CSS personnel -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navbar générale du site -->
+    <header class="site-navbar">
+        <div class="brand">
+            <div class="logo-circle">
+                <span>🛡</span>
+            </div>
+
+            <div>
+                <h1>Amara</h1>
+                <p>SÉCURITÉ FÉMININE</p>
+            </div>
         </div>
 
-        <div>
-            <h1>Amara</h1>
-            <p>SÉCURITÉ FÉMININE</p>
-        </div>
-    </div>
+        <nav class="site-links">
+            <a href="#mapSection">Carte</a>
+            <a href="#securityAdvice">Conseils de sécurité</a>
+            <a href="#aboutUs">About us</a>
+        </nav>
+    </header>
 
-    <nav class="site-links">
-        <a href="#mapSection">Carte</a>
-        <a href="#securityAdvice">Conseils de sécurité</a>
-        <a href="#aboutUs">About us</a>
+    <!-- Navbar propre à la carte -->
+    <nav class="map-navbar">
+        <div class="map-filters">
+            <button class="filter-btn active" data-risk="all">Toutes les zones</button>
+            <button class="filter-btn" data-risk="high">Risque élevé</button>
+            <button class="filter-btn" data-risk="medium">À surveiller</button>
+            <button class="filter-btn" data-risk="safe">Sûr</button>
+        </div>
+
+        <div class="emergency">
+            Urgence : 3919 · Police : 17
+        </div>
     </nav>
-</header>
 
-<nav class="map-navbar">
-    <div class="map-filters">
-        <button class="filter-btn active" data-risk="all">Toutes les zones</button>
-        <button class="filter-btn" data-risk="high">Risque élevé</button>
-        <button class="filter-btn" data-risk="medium">À surveiller</button>
-        <button class="filter-btn" data-risk="safe">Sûr</button>
+    <main class="main-layout">
+
+        <section class="map-section" id="mapSection">
+            <div id="map"></div>
+
+            <div class="legend">
+                <h3>LÉGENDE</h3>
+
+                <div class="legend-row">
+                    <span class="legend-dot high"></span>
+                    <p>Risque élevé</p>
+                    <strong>5 zones</strong>
+                </div>
+
+                <div class="legend-row">
+                    <span class="legend-dot medium"></span>
+                    <p>À surveiller</p>
+                    <strong>4 zones</strong>
+                </div>
+
+                <div class="legend-row">
+                    <span class="legend-dot safe"></span>
+                    <p>Globalement sûr</p>
+                    <strong>3 zones</strong>
+                </div>
+            </div>
+
+            <div class="map-controls">
+                <button id="zoomIn">+</button>
+                <button id="zoomOut">-</button>
+                <button id="resetMap">□</button>
+            </div>
+        </section>
+
+        <aside class="side-panel" id="sidePanel">
+            <button class="close-panel" id="closePanel">×</button>
+
+            <span class="risk-badge" id="panelRisk">À surveiller</span>
+
+            <h2 id="panelTitle">Nation / Cours de Vincennes</h2>
+            <p class="district" id="panelDistrict">11e / 12e · Paris</p>
+
+            <div class="separator"></div>
+
+            <p class="description" id="panelDescription">
+                Zone de transition avec incidents ponctuels de harcèlement aux abords du métro et en soirée.
+            </p>
+
+            <div class="separator"></div>
+
+            <h3 class="advice-title">⚠ CONSEILS DE SÉCURITÉ</h3>
+
+            <div id="panelAdvice" class="advice-list">
+                <p>◆ Attention aux abords du métro la nuit</p>
+                <p>◆ Évitez les traversées de parcs isolés</p>
+            </div>
+
+            <button class="alert-button" id="openAlertModal">
+                Ajouter une alerte
+            </button>
+
+            <div class="footer-emergency">
+                En danger ? 3919 violences · 17 police
+            </div>
+        </aside>
+
+    </main>
+
+    <section class="zones-list-section">
+        <div class="list-header">
+            <div>
+                <h2>Zones signalées</h2>
+                <p>Consultez les zones selon leur niveau de risque.</p>
+            </div>
+
+            <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
+        </div>
+
+        <div class="zones-list" id="zonesList"></div>
+    </section>
+
+    <section class="content-section" id="securityAdvice">
+        <h2>Conseils de sécurité</h2>
+
+        <p>
+            Cette section donne quelques conseils simples pour aider les utilisatrices
+            à se déplacer avec plus de sécurité, surtout dans les zones signalées comme
+            sensibles.
+        </p>
+
+        <div class="advice-grid">
+            <div class="advice-card">
+                <h3>Rester dans les zones éclairées</h3>
+                <p>
+                    Le soir, il est préférable de choisir les rues principales et les endroits
+                    bien éclairés, même si le trajet est un peu plus long.
+                </p>
+            </div>
+
+            <div class="advice-card">
+                <h3>Éviter les lieux isolés</h3>
+                <p>
+                    Les parcs, parkings ou petites rues vides peuvent être moins sûrs,
+                    surtout tard le soir.
+                </p>
+            </div>
+
+            <div class="advice-card">
+                <h3>Prévenir une personne de confiance</h3>
+                <p>
+                    Avant un déplacement tardif, il peut être utile de prévenir un proche
+                    ou de partager sa localisation.
+                </p>
+            </div>
+
+            <div class="advice-card">
+                <h3>Appeler les numéros utiles</h3>
+                <p>
+                    En cas de danger, il faut contacter la police au 17. Pour les violences
+                    faites aux femmes, le numéro 3919 peut être utilisé.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section about-section" id="aboutUs">
+        <h2>About us</h2>
+
+        <p>
+            Amara est un projet de site web imaginé pour aider les femmes à mieux
+            anticiper leurs déplacements en ville. L’idée principale est de proposer
+            une carte simple et lisible, avec des zones classées selon leur niveau de risque.
+        </p>
+
+        <p>
+            Le nom Amara est associé à l’idée de femme et de guide. Le site cherche donc
+            à accompagner les utilisatrices en leur donnant des informations utiles,
+            comme les zones à éviter, les lieux à surveiller et les conseils de sécurité.
+        </p>
+
+        <p>
+            Le projet repose aussi sur une logique participative : les utilisatrices peuvent
+            consulter les alertes existantes et, plus tard, ajouter leurs propres signalements
+            avec une zone géographique, une rue, une heure et une description courte.
+        </p>
+    </section>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <button class="close-modal" id="closeModal">×</button>
+
+            <h2>Ajouter une alerte</h2>
+            <p class="modal-intro">
+                Signalez une situation pour aider les autres utilisatrices.
+            </p>
+
+            <form id="alertForm">
+                <label for="street">Nom de la rue ou zone</label>
+                <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
+
+                <label for="time">Heure de l’incident</label>
+                <input type="time" id="time" required>
+
+                <label for="riskLevel">Niveau de risque</label>
+                <select id="riskLevel" required>
+                    <option value="">Choisir un niveau</option>
+                    <option value="high">Risque élevé</option>
+                    <option value="medium">À surveiller</option>
+                    <option value="safe">Sûr</option>
+                </select>
+
+                <label for="message">Description courte</label>
+                <textarea id="message" rows="4" placeholder="Décrivez rapidement la situation..." required></textarea>
+
+                <button type="submit">Envoyer l’alerte</button>
+            </form>
+        </div>
     </div>
 
-    <div class="emergency">
-        Urgence : 3919 · Police : 17
+    <div class="toast" id="toast">
+        Alerte ajoutée avec succès.
     </div>
-</nav>
+
+    <!-- Leaflet JS pour la carte -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- JS personnel -->
+    <script src="script.js"></script>
+</body>
+</html>
