@@ -1,0 +1,65 @@
+.advice-page-grid {
+    padding: 50px 8%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+}
+
+.advice-card {
+    background-color: #fff1f8;
+    border: 1px solid #ead0e2;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(92, 39, 76, 0.08);
+}
+
+.advice-card h3 {
+    font-family: Georgia, serif;
+    color: #2d0f28;
+    font-size: 23px;
+    margin-bottom: 14px;
+}
+
+.advice-card p {
+    color: #74436b;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.emergency-box {
+    margin: 0 8% 60px;
+    background-color: #fff1f8;
+    border: 1px solid #ead0e2;
+    border-radius: 22px;
+    padding: 28px;
+    color: #74436b;
+}
+
+.emergency-box h3 {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    color: #2d0f28;
+    margin-bottom: 14px;
+}
+
+.emergency-box p {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+@media screen and (max-width: 900px) {
+    .advice-page-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (max-width: 650px) {
+    .advice-page-grid {
+        padding: 35px 24px;
+        grid-template-columns: 1fr;
+    }
+
+    .emergency-box {
+        margin: 0 24px 45px;
+    }
+}

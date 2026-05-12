@@ -1,0 +1,40 @@
+.about-content {
+    padding: 50px 8%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+.about-card {
+    background-color: #fff1f8;
+    border: 1px solid #ead0e2;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(92, 39, 76, 0.08);
+}
+
+.about-card h3 {
+    font-family: Georgia, serif;
+    color: #2d0f28;
+    font-size: 25px;
+    margin-bottom: 14px;
+}
+
+.about-card p {
+    color: #74436b;
+    font-size: 17px;
+    line-height: 1.7;
+    margin-bottom: 12px;
+}
+
+@media screen and (max-width: 900px) {
+    .about-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media screen and (max-width: 650px) {
+    .about-content {
+        padding: 35px 24px;
+    }
+}
