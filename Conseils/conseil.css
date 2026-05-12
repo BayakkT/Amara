@@ -1,5 +1,27 @@
+.emergency-box {
+    margin: 28px 8% 24px;
+    background-color: #fff1f8;
+    border: 1px solid #ead0e2;
+    border-radius: 22px;
+    padding: 28px;
+    color: #74436b;
+}
+
+.emergency-box h3 {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    color: #2d0f28;
+    margin-bottom: 14px;
+}
+
+.emergency-box p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+    font-size: 17px;
+}
+
 .advice-page-grid {
-    padding: 50px 8%;
+    padding: 24px 8% 45px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
@@ -26,40 +48,94 @@
     line-height: 1.7;
 }
 
-.emergency-box {
-    margin: 0 8% 60px;
+.bag-section {
+    padding: 55px 8% 70px;
     background-color: #fff1f8;
-    border: 1px solid #ead0e2;
-    border-radius: 22px;
-    padding: 28px;
-    color: #74436b;
+    border-top: 1px solid #ead0e2;
 }
 
-.emergency-box h3 {
+.bag-header {
+    max-width: 1200px;
+    margin-bottom: 30px;
+}
+
+.bag-header h2 {
     font-family: Georgia, serif;
-    font-size: 26px;
+    font-size: 36px;
     color: #2d0f28;
     margin-bottom: 14px;
 }
 
-.emergency-box p {
-    margin-bottom: 8px;
-    line-height: 1.6;
+.bag-header p {
+    color: #74436b;
+    font-size: 18px;
+    line-height: 1.7;
+}
+
+.bag-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+}
+
+.bag-card {
+    background-color: #fff7fc;
+    border: 1px solid #ead0e2;
+    border-radius: 22px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(92, 39, 76, 0.08);
+}
+
+.bag-card h3 {
+    font-family: Georgia, serif;
+    color: #2d0f28;
+    font-size: 22px;
+    margin-bottom: 12px;
+}
+
+.bag-card p {
+    color: #74436b;
+    font-size: 16.5px;
+    line-height: 1.7;
+}
+
+.credits {
+    margin-top: 28px;
+    color: #7c4b75;
+    background-color: #fff7fc;
+    border: 1px solid #ead0e2;
+    border-radius: 18px;
+    padding: 18px;
+    line-height: 1.7;
+    font-size: 15.5px;
 }
 
 @media screen and (max-width: 900px) {
-    .advice-page-grid {
+    .advice-page-grid,
+    .bag-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media screen and (max-width: 650px) {
+    .emergency-box {
+        margin: 24px 24px 20px;
+    }
+
     .advice-page-grid {
-        padding: 35px 24px;
+        padding: 20px 24px 35px;
         grid-template-columns: 1fr;
     }
 
-    .emergency-box {
-        margin: 0 24px 45px;
+    .bag-section {
+        padding: 40px 24px 50px;
+    }
+
+    .bag-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bag-header h2 {
+        font-size: 30px;
     }
 }
