@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amara - Sécurité féminine</title>
 
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    >
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
+    <link rel="stylesheet" href="home.css">
 </head>
 <body>
 
@@ -27,10 +25,10 @@
         </div>
 
         <nav class="site-links">
-            <a href="#mapSection">Carte</a>
+            <a href="index.html">Carte</a>
             <a href="#routePlanner">Itinéraire</a>
-            <a href="#securityAdvice">Conseils de sécurité</a>
-            <a href="#aboutUs">About us</a>
+            <a href="Conseils/conseil.html">Conseils de sécurité</a>
+            <a href="AboutUs/about.html">About us</a>
         </nav>
     </header>
 
@@ -169,72 +167,6 @@
         <div class="zones-list" id="zonesList"></div>
     </section>
 
-    <section class="content-section" id="securityAdvice">
-        <h2>Conseils de sécurité</h2>
-
-        <p>
-            Cette section donne quelques conseils simples pour aider les utilisatrices
-            à se déplacer avec plus de sécurité, surtout dans les zones signalées comme
-            sensibles.
-        </p>
-
-        <div class="advice-grid">
-            <div class="advice-card">
-                <h3>Rester dans les zones éclairées</h3>
-                <p>
-                    Le soir, il est préférable de choisir les rues principales et les endroits
-                    bien éclairés, même si le trajet est un peu plus long.
-                </p>
-            </div>
-
-            <div class="advice-card">
-                <h3>Éviter les lieux isolés</h3>
-                <p>
-                    Les parcs, parkings ou petites rues vides peuvent être moins sûrs,
-                    surtout tard le soir.
-                </p>
-            </div>
-
-            <div class="advice-card">
-                <h3>Prévenir une personne de confiance</h3>
-                <p>
-                    Avant un déplacement tardif, il peut être utile de prévenir un proche
-                    ou de partager sa localisation.
-                </p>
-            </div>
-
-            <div class="advice-card">
-                <h3>Appeler les numéros utiles</h3>
-                <p>
-                    En cas de danger, il faut contacter la police au 17. Pour les violences
-                    faites aux femmes, le numéro 3919 peut être utilisé.
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <section class="content-section about-section" id="aboutUs">
-        <h2>About us</h2>
-
-        <p>
-            Amara est un projet de site web imaginé pour aider les femmes à mieux
-            anticiper leurs déplacements en ville. L’idée principale est de proposer
-            une carte simple et lisible, avec des zones classées selon leur niveau de risque.
-        </p>
-
-        <p>
-            Le nom Amara est associé à l’idée de femme et de guide. Le site cherche donc
-            à accompagner les utilisatrices en leur donnant des informations utiles,
-            comme les zones à éviter, les lieux à surveiller et les conseils de sécurité.
-        </p>
-
-        <p>
-            Le projet repose aussi sur une logique participative : les utilisatrices peuvent
-            consulter les alertes existantes et, plus tard, ajouter leurs propres signalements
-            avec une zone géographique, une rue, une heure et une description courte.
-        </p>
-    </section>
-
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <button class="close-modal" id="closeModal">×</button>
@@ -273,5 +205,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="script.js"></script>
+    <script src="itineraire.js"></script>
 </body>
 </html>
