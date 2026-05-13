@@ -110,6 +110,18 @@
     font-size: 15.5px;
 }
 
+.purple-link {
+    color: #7c4b75;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.purple-link:hover {
+    color: #bd5c93;
+    text-decoration: underline;
+}
+
 @media screen and (max-width: 900px) {
     .advice-page-grid,
     .bag-grid {
