@@ -1,13 +1,3 @@
-function getFilteredZones() {
-    if (currentRisk === "all") {
-        return zones;
-    }
-
-    return zones.filter(function(zone) {
-        return zone.risk === currentRisk;
-    });
-}
-
 function getFilteredStreets() {
     if (typeof streetAlerts === "undefined") {
         return [];
@@ -17,36 +7,27 @@ function getFilteredStreets() {
         return streetAlerts;
     }
 
-    if (currentRisk === "high") {
-        return streetAlerts.filter(function(street) {
-            return street.risk === "high";
-        });
-    }
-
-    if (currentRisk === "medium") {
-        return streetAlerts.filter(function(street) {
-            return street.risk === "medium";
-        });
-    }
-
-    if (currentRisk === "safe") {
-        return [];
-    }
-
-    return streetAlerts;
+    return streetAlerts.filter(function(street) {
+        return street.risk === currentRisk;
+    });
 }
 
 function clearMapLayers() {
-    circles.forEach(function(circle) {
-        map.removeLayer(circle);
-    });
+    if (typeof circles !== "undefined") {
+        circles.forEach(function(circle) {
+            map.removeLayer(circle);
+        });
 
-    streetLayers.forEach(function(layer) {
-        map.removeLayer(layer);
-    });
+        circles = [];
+    }
 
-    circles = [];
-    streetLayers = [];
+    if (typeof streetLayers !== "undefined") {
+        streetLayers.forEach(function(layer) {
+            map.removeLayer(layer);
+        });
+
+        streetLayers = [];
+    }
 }
 
 function createStreetPopup(street) {
@@ -70,93 +51,183 @@ function createStreetPopup(street) {
     );
 }
 
-let renderMapToken = 0;
-const streetGeometryCache = {};
-
-function getStaticStreetGeometry(street) {
+function getStreetGeometryById(streetId) {
     if (typeof streetGeometries === "undefined") {
         return null;
     }
 
-    const match = streetGeometries.find(function(item) {
-        return item.id === street.id;
+    const foundStreet = streetGeometries.find(function(item) {
+        return item.id === streetId;
     });
 
-    if (!match) {
+    if (!foundStreet) {
         return null;
     }
 
-    return match.geometry;
+    return foundStreet.geometry;
 }
 
-function convertOsmGeometryToLeaflet(geojson) {
-    if (!geojson) {
-        return null;
+function renderMapZones() {
+    clearMapLayers();
+
+    if (typeof streetAlerts === "undefined") {
+        console.log("streetAlerts is not loaded");
+        return;
     }
 
-    if (geojson.type === "LineString") {
-        return geojson.coordinates.map(function(coord) {
-            return [coord[1], coord[0]];
-        });
+    if (typeof streetGeometries === "undefined") {
+        console.log("streetGeometries is not loaded");
+        return;
     }
 
-    if (geojson.type === "MultiLineString") {
-        return geojson.coordinates.map(function(line) {
-            return line.map(function(coord) {
-                return [coord[1], coord[0]];
+    if (typeof streetRiskColors === "undefined") {
+        console.log("streetRiskColors is not loaded");
+        return;
+    }
+
+    const filteredStreets = getFilteredStreets();
+
+    filteredStreets.forEach(function(street) {
+        const geometry = getStreetGeometryById(street.id);
+
+        if (!geometry) {
+            console.log("No geometry found for:", street.id, street.street);
+            return;
+        }
+
+        const colors = streetRiskColors[street.risk];
+
+        if (!colors) {
+            console.log("No color found for:", street.risk);
+            return;
+        }
+
+        const glowLayer = L.polyline(geometry, {
+            color: colors.glow,
+            weight: 20,
+            opacity: 0.25,
+            lineCap: "round",
+            lineJoin: "round",
+            interactive: false
+        }).addTo(map);
+
+        const lineLayer = L.polyline(geometry, {
+            color: colors.line,
+            weight: 7,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round"
+        }).addTo(map);
+
+        lineLayer.bindPopup(createStreetPopup(street));
+
+        streetLayers.push(glowLayer);
+        streetLayers.push(lineLayer);
+    });
+}
+
+function renderZonesList() {
+    const list = document.getElementById("zonesList");
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = "";
+
+    const filteredStreets = getFilteredStreets();
+
+    filteredStreets.forEach(function(street) {
+        const card = document.createElement("div");
+        card.className = "zone-card";
+
+        let dotClass = "medium";
+
+        if (street.risk === "high") {
+            dotClass = "high";
+        }
+
+        card.innerHTML = `
+            <div>
+                <div class="zone-card-title">
+                    <span class="zone-card-dot ${dotClass}"></span>
+                    ${street.street}
+                </div>
+                <p>${street.commune} · ${street.dept}</p>
+            </div>
+
+            <span class="card-risk ${street.risk}">
+                ${street.riskLabel}
+            </span>
+        `;
+
+        card.addEventListener("click", function() {
+            updatePanelFromStreet(street);
+            openSidePanel();
+
+            const geometry = getStreetGeometryById(street.id);
+
+            if (geometry && geometry.length > 0) {
+                map.setView(geometry[0], 15);
+            }
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
             });
         });
-    }
 
-    return null;
+        list.appendChild(card);
+    });
 }
 
-async function fetchStreetGeometryFromOsm(street) {
-    const query = street.street + ", " + street.commune + ", France";
-    const url =
-        "https://nominatim.openstreetmap.org/search" +
-        "?format=json" +
-        "&limit=5" +
-        "&polygon_geojson=1" +
-        "&q=" + encodeURIComponent(query);
+function updatePanelFromStreet(street) {
+    const panelTitle = document.getElementById("panelTitle");
+    const panelDistrict = document.getElementById("panelDistrict");
+    const panelRisk = document.getElementById("panelRisk");
+    const panelDescription = document.getElementById("panelDescription");
+    const adviceContainer = document.getElementById("panelAdvice");
 
-    const response = await fetch(url);
-    const results = await response.json();
-
-    for (let i = 0; i < results.length; i++) {
-        const geometry = convertOsmGeometryToLeaflet(results[i].geojson);
-
-        if (geometry) {
-            return geometry;
-        }
+    if (!panelTitle || !panelDistrict || !panelRisk || !panelDescription || !adviceContainer) {
+        return;
     }
 
-    return null;
+    panelTitle.textContent = street.street;
+    panelDistrict.textContent = street.commune + " · " + street.dept;
+    panelRisk.textContent = street.riskLabel;
+
+    let description = "Rue signalée sur la carte Amara.";
+
+    if (street.articles && street.articles.length > 0) {
+        description = street.articles[0].summary;
+    }
+
+    panelDescription.textContent = description;
+
+    adviceContainer.innerHTML = "";
+
+    const advice = [
+        "Restez sur les axes principaux et bien éclairés.",
+        "Évitez de rester seule longtemps dans cette rue, surtout tard le soir.",
+        "Prévenez une personne de confiance si vous devez passer par ici."
+    ];
+
+    advice.forEach(function(item) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = "◆ " + item;
+        adviceContainer.appendChild(paragraph);
+    });
 }
 
-async function getStreetGeometry(street) {
-    if (streetGeometryCache[street.id]) {
-        return streetGeometryCache[street.id];
+function formatStreetCount(count) {
+    if (count <= 1) {
+        return count + " rue";
     }
 
-    try {
-        const osmGeometry = await fetchStreetGeometryFromOsm(street);
-
-        if (osmGeometry) {
-            streetGeometryCache[street.id] = osmGeometry;
-            return osmGeometry;
-        }
-    } catch (error) {
-        console.log("OSM geometry not found for:", street.street, error);
-    }
-
-    const staticGeometry = getStaticStreetGeometry(street);
-    streetGeometryCache[street.id] = staticGeometry;
-
-    return staticGeometry;
+    return count + " rues";
 }
 
-function updateLegendCounts() {
+function updateStreetLegend() {
     if (typeof streetAlerts === "undefined") {
         return;
     }
@@ -169,121 +240,16 @@ function updateLegendCounts() {
         return street.risk === "medium";
     }).length;
 
-    const highElement = document.getElementById("legendHighCount");
-    const mediumElement = document.getElementById("legendMediumCount");
+    const highElement = document.getElementById("highStreetCount");
+    const mediumElement = document.getElementById("mediumStreetCount");
 
     if (highElement) {
-        highElement.textContent = highCount + " rues";
+        highElement.textContent = formatStreetCount(highCount);
     }
 
     if (mediumElement) {
-        mediumElement.textContent = mediumCount + " rues";
+        mediumElement.textContent = formatStreetCount(mediumCount);
     }
-}
-
-async function renderMapZones() {
-    const currentToken = ++renderMapToken;
-    clearMapLayers();
-    updateLegendCounts();
-
-    if (typeof streetAlerts === "undefined") {
-        console.log("streetAlerts is not loaded");
-        return;
-    }
-
-    const filteredStreets = getFilteredStreets();
-
-    console.log("Number of streets to draw:", filteredStreets.length);
-
-    for (let i = 0; i < filteredStreets.length; i++) {
-        const street = filteredStreets[i];
-        const geometry = await getStreetGeometry(street);
-
-        if (currentToken !== renderMapToken) {
-            return;
-        }
-
-        if (!geometry) {
-            console.log("No geometry found for:", street.id, street.street);
-            continue;
-        }
-
-        const colors = streetRiskColors[street.risk];
-
-        if (!colors) {
-            console.log("No color found for:", street.risk);
-            continue;
-        }
-
-        const glowLayer = L.polyline(geometry, {
-            color: colors.glow,
-            weight: 18,
-            opacity: 0.22,
-            lineCap: "round",
-            lineJoin: "round",
-            interactive: false
-        }).addTo(map);
-
-        const lineLayer = L.polyline(geometry, {
-            color: colors.line,
-            weight: 6,
-            opacity: 0.9,
-            lineCap: "round",
-            lineJoin: "round"
-        }).addTo(map);
-
-        lineLayer.bindPopup(createStreetPopup(street));
-
-        streetLayers.push(glowLayer);
-        streetLayers.push(lineLayer);
-    }
-}
-
-function renderZonesList() {
-    const list = document.getElementById("zonesList");
-    list.innerHTML = "";
-
-    const filteredZones = getFilteredZones();
-
-    filteredZones.forEach(function(zone) {
-        const card = document.createElement("div");
-        card.className = "zone-card";
-
-        card.innerHTML = `
-            <h4>${zone.name}</h4>
-            <p>${zone.district}</p>
-            <span>${zone.riskLabel}</span>
-        `;
-
-        card.addEventListener("click", function() {
-            updatePanel(zone);
-            openSidePanel();
-            map.setView(zone.coordinates, 14);
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        });
-
-        list.appendChild(card);
-    });
-}
-
-function updatePanel(zone) {
-    document.getElementById("panelTitle").textContent = zone.name;
-    document.getElementById("panelDistrict").textContent = zone.district;
-    document.getElementById("panelRisk").textContent = zone.riskLabel;
-    document.getElementById("panelDescription").textContent = zone.description;
-
-    const adviceContainer = document.getElementById("panelAdvice");
-    adviceContainer.innerHTML = "";
-
-    zone.advice.forEach(function(item) {
-        const paragraph = document.createElement("p");
-        paragraph.textContent = "◆ " + item;
-        adviceContainer.appendChild(paragraph);
-    });
 }
 
 function setupFilters() {
@@ -305,17 +271,27 @@ function setupFilters() {
 }
 
 function setupMapControls() {
-    document.getElementById("zoomIn").addEventListener("click", function() {
-        map.zoomIn();
-    });
+    const zoomIn = document.getElementById("zoomIn");
+    const zoomOut = document.getElementById("zoomOut");
+    const resetMap = document.getElementById("resetMap");
 
-    document.getElementById("zoomOut").addEventListener("click", function() {
-        map.zoomOut();
-    });
+    if (zoomIn) {
+        zoomIn.addEventListener("click", function() {
+            map.zoomIn();
+        });
+    }
 
-    document.getElementById("resetMap").addEventListener("click", function() {
-        map.setView([48.8625, 2.35], 13);
-    });
+    if (zoomOut) {
+        zoomOut.addEventListener("click", function() {
+            map.zoomOut();
+        });
+    }
+
+    if (resetMap) {
+        resetMap.addEventListener("click", function() {
+            map.setView([48.8625, 2.35], 13);
+        });
+    }
 }
 
 function setupModal() {
@@ -325,64 +301,93 @@ function setupModal() {
     const form = document.getElementById("alertForm");
     const toast = document.getElementById("toast");
 
-    openButton.addEventListener("click", function() {
-        modalOverlay.classList.add("active");
-    });
+    if (openButton && modalOverlay) {
+        openButton.addEventListener("click", function() {
+            modalOverlay.classList.add("active");
+        });
+    }
 
-    closeButton.addEventListener("click", function() {
-        modalOverlay.classList.remove("active");
-    });
-
-    modalOverlay.addEventListener("click", function(event) {
-        if (event.target === modalOverlay) {
+    if (closeButton && modalOverlay) {
+        closeButton.addEventListener("click", function() {
             modalOverlay.classList.remove("active");
-        }
-    });
+        });
+    }
 
-    form.addEventListener("submit", function(event) {
-        event.preventDefault();
+    if (modalOverlay) {
+        modalOverlay.addEventListener("click", function(event) {
+            if (event.target === modalOverlay) {
+                modalOverlay.classList.remove("active");
+            }
+        });
+    }
 
-        modalOverlay.classList.remove("active");
-        form.reset();
+    if (form) {
+        form.addEventListener("submit", function(event) {
+            event.preventDefault();
 
-        toast.classList.add("active");
+            if (modalOverlay) {
+                modalOverlay.classList.remove("active");
+            }
 
-        setTimeout(function() {
-            toast.classList.remove("active");
-        }, 2500);
-    });
+            form.reset();
+
+            if (toast) {
+                toast.classList.add("active");
+
+                setTimeout(function() {
+                    toast.classList.remove("active");
+                }, 2500);
+            }
+        });
+    }
 }
 
 function openSidePanel() {
     const panel = document.getElementById("sidePanel");
-    panel.style.display = "block";
+
+    if (panel) {
+        panel.style.display = "block";
+    }
 }
 
 function setupOtherButtons() {
-    document.getElementById("closePanel").addEventListener("click", function() {
-        const panel = document.getElementById("sidePanel");
-        panel.style.display = "none";
-    });
+    const closePanel = document.getElementById("closePanel");
 
-    document.getElementById("showAllZones").addEventListener("click", function() {
-        currentRisk = "all";
+    if (closePanel) {
+        closePanel.addEventListener("click", function() {
+            const panel = document.getElementById("sidePanel");
 
-        const buttons = document.querySelectorAll(".filter-btn");
-
-        buttons.forEach(function(button) {
-            button.classList.remove("active");
-
-            if (button.dataset.risk === "all") {
-                button.classList.add("active");
+            if (panel) {
+                panel.style.display = "none";
             }
         });
+    }
 
-        renderMapZones();
-        renderZonesList();
-    });
+    const showAllButton = document.getElementById("showAllZones");
+
+    if (showAllButton) {
+        showAllButton.addEventListener("click", function() {
+            currentRisk = "all";
+
+            const buttons = document.querySelectorAll(".filter-btn");
+
+            buttons.forEach(function(button) {
+                button.classList.remove("active");
+
+                if (button.dataset.risk === "all") {
+                    button.classList.add("active");
+                }
+            });
+
+            renderMapZones();
+            renderZonesList();
+        });
+    }
 }
 
 function initHome() {
+    updateStreetLegend();
+
     setupFilters();
     setupMapControls();
     setupModal();
@@ -391,7 +396,11 @@ function initHome() {
     renderMapZones();
     renderZonesList();
 
-    updatePanel(zones[5]);
+    if (typeof streetAlerts !== "undefined" && streetAlerts.length > 0) {
+        updatePanelFromStreet(streetAlerts[0]);
+    }
 }
 
-initHome();
+document.addEventListener("DOMContentLoaded", function() {
+    initHome();
+});

@@ -1,16 +1,132 @@
 let routeLine = null;
 let routeMarkers = [];
+let lastCalculatedRoute = null;
 
-async function geocodeAddress(address) {
-    const fullAddress = address + ", Paris, France";
-    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(fullAddress);
+const PARIS_VIEWBOX = "2.2241,48.9022,2.4699,48.8156";
+const PARIS_CENTER = { lat: 48.8566, lon: 2.3522 };
 
-    const response = await fetch(url);
-    const data = await response.json();
+function normalizeAddress(value) {
+    let address = value.trim().replace(/\s+/g, " ");
 
-    if (data.length === 0) {
+    if (address === "") {
+        return "";
+    }
+
+    const lower = address.toLowerCase();
+    const alreadyHasPlace =
+        lower.includes("paris") ||
+        lower.includes("france") ||
+        lower.includes("saint-denis") ||
+        lower.includes("aubervilliers") ||
+        lower.includes("montreuil") ||
+        lower.includes("les lilas") ||
+        lower.includes("bagnolet") ||
+        lower.includes("bobigny") ||
+        lower.includes("pantin") ||
+        lower.includes("ivry") ||
+        lower.includes("villejuif") ||
+        lower.includes("clichy") ||
+        lower.includes("levallois") ||
+        lower.includes("boulogne") ||
+        lower.includes("vincennes");
+
+    if (!alreadyHasPlace) {
+        address += ", Paris";
+    }
+
+    if (!address.toLowerCase().includes("france")) {
+        address += ", France";
+    }
+
+    return address;
+}
+
+async function fetchJson(url, customErrorMessage) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() {
+        controller.abort();
+    }, 9000);
+
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(customErrorMessage || "Erreur réseau.");
+        }
+
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+}
+
+async function fetchJsonWithProxyFallback(url, customErrorMessage) {
+    try {
+        return await fetchJson(url, customErrorMessage);
+    } catch (firstError) {
+        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+
+        try {
+            return await fetchJson(proxyUrl, customErrorMessage);
+        } catch (secondError) {
+            throw new Error(customErrorMessage || firstError.message || "Impossible de contacter le service externe.");
+        }
+    }
+}
+
+function scoreNominatimResult(item) {
+    let score = 0;
+    const display = (item.display_name || "").toLowerCase();
+    const type = (item.type || "").toLowerCase();
+    const category = (item.category || item.class || "").toLowerCase();
+
+    if (display.includes("paris")) score += 8;
+    if (display.includes("île-de-france") || display.includes("ile-de-france")) score += 5;
+    if (category === "place") score += 2;
+    if (category === "highway") score += 5;
+    if (type === "house" || type === "residential" || type === "tertiary" || type === "secondary") score += 5;
+    if (item.importance) score += Number(item.importance);
+
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    const distanceToParis = calculateDistanceMeters(lat, lon, PARIS_CENTER.lat, PARIS_CENTER.lon);
+
+    if (distanceToParis < 35000) score += 6;
+    if (distanceToParis > 80000) score -= 10;
+
+    return score;
+}
+
+async function geocodeWithNominatim(address) {
+    const normalizedAddress = normalizeAddress(address);
+    const params = new URLSearchParams({
+        format: "jsonv2",
+        q: normalizedAddress,
+        limit: "8",
+        addressdetails: "1",
+        countrycodes: "fr",
+        viewbox: PARIS_VIEWBOX,
+        bounded: "0"
+    });
+
+    const url = "https://nominatim.openstreetmap.org/search?" + params.toString();
+    const data = await fetchJsonWithProxyFallback(url, "Le service d’adresse ne répond pas pour le moment.");
+
+    if (!Array.isArray(data) || data.length === 0) {
         throw new Error("Adresse introuvable : " + address);
     }
+
+    data.sort(function(a, b) {
+        return scoreNominatimResult(b) - scoreNominatimResult(a);
+    });
 
     return {
         lat: parseFloat(data[0].lat),
@@ -19,21 +135,89 @@ async function geocodeAddress(address) {
     };
 }
 
+async function geocodeWithPhoton(address) {
+    const normalizedAddress = normalizeAddress(address);
+    const params = new URLSearchParams({
+        q: normalizedAddress,
+        lang: "fr",
+        limit: "5",
+        lat: String(PARIS_CENTER.lat),
+        lon: String(PARIS_CENTER.lon)
+    });
+
+    const url = "https://photon.komoot.io/api/?" + params.toString();
+    const data = await fetchJsonWithProxyFallback(url, "Le service d’adresse ne répond pas pour le moment.");
+
+    if (!data.features || data.features.length === 0) {
+        throw new Error("Adresse introuvable : " + address);
+    }
+
+    const feature = data.features[0];
+    const properties = feature.properties || {};
+    const coords = feature.geometry.coordinates;
+
+    return {
+        lat: coords[1],
+        lon: coords[0],
+        displayName: [properties.name, properties.street, properties.city, properties.country]
+            .filter(Boolean)
+            .join(", ")
+    };
+}
+
+async function geocodeAddress(address) {
+    try {
+        return await geocodeWithNominatim(address);
+    } catch (nominatimError) {
+        try {
+            return await geocodeWithPhoton(address);
+        } catch (photonError) {
+            throw new Error(
+                "Adresse introuvable : " + address +
+                ". Essayez avec un numéro, une rue et la ville, par exemple : 20 rue de Rivoli, Paris."
+            );
+        }
+    }
+}
+
+function getRouteProfile() {
+    return "driving";
+}
+
 async function getRoute(points) {
     const coordinates = points.map(function(point) {
         return point.lon + "," + point.lat;
     }).join(";");
 
-    const url = "https://router.project-osrm.org/route/v1/driving/" + coordinates + "?overview=full&geometries=geojson&steps=true";
+    const params = "overview=full&geometries=geojson&steps=true&alternatives=false";
+    const url = "https://router.project-osrm.org/route/v1/" + getRouteProfile() + "/" + coordinates + "?" + params;
 
-    const response = await fetch(url);
-    const data = await response.json();
+    const data = await fetchJsonWithProxyFallback(url, "Impossible de calculer cet itinéraire. Vérifiez votre connexion ou réessayez plus tard.");
 
     if (!data.routes || data.routes.length === 0) {
         throw new Error("Impossible de calculer cet itinéraire.");
     }
 
     return data.routes[0];
+}
+
+function getDisplayedDuration(route, travelMode) {
+    if (travelMode === "walk") {
+        return route.distance / 1.35;
+    }
+
+    return route.duration;
+}
+
+function createRouteMarker(point, label, type) {
+    const marker = L.marker([point.lat, point.lon]).addTo(map);
+    marker.bindPopup(
+        "<strong>" + label + "</strong><br>" +
+        escapeHtml(point.displayName || "Adresse sélectionnée")
+    );
+
+    routeMarkers.push(marker);
+    return marker;
 }
 
 function drawRoute(route, startPoint, endPoint, isSafeRoute) {
@@ -45,21 +229,17 @@ function drawRoute(route, startPoint, endPoint, isSafeRoute) {
 
     routeLine = L.polyline(latLngs, {
         color: isSafeRoute ? "#7b61c9" : "#bd5c93",
-        weight: 6,
-        opacity: 0.85
+        weight: 7,
+        opacity: 0.9,
+        lineCap: "round",
+        lineJoin: "round"
     }).addTo(map);
 
-    const startMarker = L.marker([startPoint.lat, startPoint.lon]).addTo(map);
-    startMarker.bindPopup("Départ");
-
-    const endMarker = L.marker([endPoint.lat, endPoint.lon]).addTo(map);
-    endMarker.bindPopup("Destination");
-
-    routeMarkers.push(startMarker);
-    routeMarkers.push(endMarker);
+    createRouteMarker(startPoint, "Départ", "start");
+    createRouteMarker(endPoint, "Destination", "end");
 
     map.fitBounds(routeLine.getBounds(), {
-        padding: [40, 40]
+        padding: [60, 60]
     });
 }
 
@@ -74,6 +254,7 @@ function clearRoute() {
     });
 
     routeMarkers = [];
+    lastCalculatedRoute = null;
 }
 
 function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -98,47 +279,140 @@ function toRadians(value) {
     return value * Math.PI / 180;
 }
 
-function findDangerousZonesOnRoute(route) {
-    const dangerousZones = zones.filter(function(zone) {
-        return zone.risk === "high" || zone.risk === "medium";
-    });
+function pointToSegmentDistanceMeters(point, segmentStart, segmentEnd) {
+    const lat = point[1];
+    const lon = point[0];
+    const lat1 = segmentStart[0];
+    const lon1 = segmentStart[1];
+    const lat2 = segmentEnd[0];
+    const lon2 = segmentEnd[1];
 
-    const routeCoordinates = route.geometry.coordinates;
-    const touchedZones = [];
+    const metersPerDegreeLat = 111320;
+    const metersPerDegreeLon = 111320 * Math.cos(toRadians(lat));
 
-    dangerousZones.forEach(function(zone) {
-        let touchesZone = false;
+    const x = lon * metersPerDegreeLon;
+    const y = lat * metersPerDegreeLat;
+    const x1 = lon1 * metersPerDegreeLon;
+    const y1 = lat1 * metersPerDegreeLat;
+    const x2 = lon2 * metersPerDegreeLon;
+    const y2 = lat2 * metersPerDegreeLat;
 
-        for (let i = 0; i < routeCoordinates.length; i++) {
-            const lon = routeCoordinates[i][0];
-            const lat = routeCoordinates[i][1];
+    const dx = x2 - x1;
+    const dy = y2 - y1;
 
-            const distance = calculateDistanceMeters(
-                lat,
-                lon,
-                zone.coordinates[0],
-                zone.coordinates[1]
-            );
+    if (dx === 0 && dy === 0) {
+        return Math.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+    }
 
-            if (distance <= zone.radius + 120) {
-                touchesZone = true;
-                break;
-            }
-        }
+    let t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
 
-        if (touchesZone) {
-            touchedZones.push(zone);
-        }
-    });
+    const projectedX = x1 + t * dx;
+    const projectedY = y1 + t * dy;
 
-    return touchedZones;
+    return Math.sqrt((x - projectedX) * (x - projectedX) + (y - projectedY) * (y - projectedY));
 }
 
-function createDetourPoint(startPoint, endPoint, zone) {
-    const centerLat = zone.coordinates[0];
-    const centerLon = zone.coordinates[1];
+function getStreetGeometryMap() {
+    const streetGeometryById = new Map();
 
-    const offsetMeters = zone.radius + 700;
+    if (typeof streetGeometries === "undefined") {
+        return streetGeometryById;
+    }
+
+    streetGeometries.forEach(function(item) {
+        streetGeometryById.set(item.id, item.geometry);
+    });
+
+    return streetGeometryById;
+}
+
+function findDangerousAlertsOnRoute(route) {
+    const touchedAlerts = [];
+    const routeCoordinates = route.geometry.coordinates;
+    const streetGeometryById = getStreetGeometryMap();
+
+    if (typeof streetAlerts !== "undefined") {
+        streetAlerts.forEach(function(street) {
+            if (street.risk !== "high" && street.risk !== "medium") {
+                return;
+            }
+
+            const geometry = streetGeometryById.get(street.id);
+
+            if (!geometry || geometry.length < 2) {
+                return;
+            }
+
+            let touchesStreet = false;
+
+            for (let i = 0; i < routeCoordinates.length && !touchesStreet; i += 3) {
+                for (let j = 0; j < geometry.length - 1; j++) {
+                    const distance = pointToSegmentDistanceMeters(routeCoordinates[i], geometry[j], geometry[j + 1]);
+
+                    if (distance <= 90) {
+                        touchesStreet = true;
+                        break;
+                    }
+                }
+            }
+
+            if (touchesStreet) {
+                touchedAlerts.push({
+                    name: street.street + " (" + street.commune + ")",
+                    risk: street.risk,
+                    coordinates: geometry[Math.floor(geometry.length / 2)],
+                    radius: 180,
+                    source: "street"
+                });
+            }
+        });
+    }
+
+    if (typeof zones !== "undefined") {
+        zones.forEach(function(zone) {
+            if (zone.risk !== "high" && zone.risk !== "medium") {
+                return;
+            }
+
+            let touchesZone = false;
+
+            for (let i = 0; i < routeCoordinates.length; i++) {
+                const lon = routeCoordinates[i][0];
+                const lat = routeCoordinates[i][1];
+
+                const distance = calculateDistanceMeters(
+                    lat,
+                    lon,
+                    zone.coordinates[0],
+                    zone.coordinates[1]
+                );
+
+                if (distance <= zone.radius + 120) {
+                    touchesZone = true;
+                    break;
+                }
+            }
+
+            if (touchesZone) {
+                touchedAlerts.push({
+                    name: zone.name,
+                    risk: zone.risk,
+                    coordinates: zone.coordinates,
+                    radius: zone.radius,
+                    source: "zone"
+                });
+            }
+        });
+    }
+
+    return touchedAlerts;
+}
+
+function createDetourPoint(startPoint, endPoint, alert) {
+    const centerLat = alert.coordinates[0];
+    const centerLon = alert.coordinates[1];
+    const offsetMeters = (alert.radius || 300) + 850;
 
     const dx = endPoint.lon - startPoint.lon;
     const dy = endPoint.lat - startPoint.lat;
@@ -161,7 +435,8 @@ function createDetourPoint(startPoint, endPoint, zone) {
 
     return {
         lat: centerLat + (perpendicularY * offsetMeters) / metersPerDegreeLat,
-        lon: centerLon + (perpendicularX * offsetMeters) / metersPerDegreeLon
+        lon: centerLon + (perpendicularX * offsetMeters) / metersPerDegreeLon,
+        displayName: "Point de détour"
     };
 }
 
@@ -186,15 +461,69 @@ function formatDuration(seconds) {
     return hours + " h " + remainingMinutes + " min";
 }
 
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function updateRouteResult(message, type) {
     const result = document.getElementById("routeResult");
     result.innerHTML = message;
-
     result.className = "route-result";
 
     if (type) {
         result.classList.add(type);
     }
+}
+
+function buildRouteSummary(route, travelMode, alerts, isSafeRoute) {
+    const modeText = travelMode === "walk" ? "à pied" : "en transport";
+    const duration = getDisplayedDuration(route, travelMode);
+
+    let message =
+        "<strong>Itinéraire " + modeText + " calculé.</strong><br>" +
+        "Distance : " + formatDistance(route.distance) + "<br>" +
+        "Durée estimée : " + formatDuration(duration) + "<br>";
+
+    if (travelMode === "walk") {
+        message += "<small>La ligne est calculée sur le réseau routier disponible, puis la durée est estimée pour la marche.</small><br>";
+    }
+
+    if (alerts.length === 0) {
+        message += isSafeRoute ?
+            "Le trajet évite les principales rues et zones signalées." :
+            "Aucune rue ou zone à risque importante n’a été détectée sur ce trajet.";
+        return { message: message, type: "safe" };
+    }
+
+    const names = alerts.map(function(alert) {
+        return alert.name;
+    }).slice(0, 6).join(", ");
+
+    message +=
+        "Attention : ce trajet passe près de : " + names + ".<br>" +
+        "Vous pouvez essayer « Éviter les zones à risque » pour proposer un détour.";
+
+    return { message: message, type: "warning" };
+}
+
+async function calculateAndDisplayRoute(points, travelMode, isSafeRoute) {
+    const route = await getRoute(points);
+    const startPoint = points[0];
+    const endPoint = points[points.length - 1];
+    const alerts = findDangerousAlertsOnRoute(route);
+
+    drawRoute(route, startPoint, endPoint, isSafeRoute);
+    lastCalculatedRoute = route;
+
+    const summary = buildRouteSummary(route, travelMode, alerts, isSafeRoute);
+    updateRouteResult(summary.message, summary.type);
+
+    return { route: route, alerts: alerts };
 }
 
 async function handleNormalRoute(event) {
@@ -215,35 +544,7 @@ async function handleNormalRoute(event) {
         const startPoint = await geocodeAddress(startValue);
         const endPoint = await geocodeAddress(endValue);
 
-        const route = await getRoute([startPoint, endPoint]);
-        drawRoute(route, startPoint, endPoint, false);
-
-        const dangerousZones = findDangerousZonesOnRoute(route);
-        const modeText = travelMode === "walk" ? "à pied" : "en transport";
-
-        if (dangerousZones.length === 0) {
-            updateRouteResult(
-                "<strong>Itinéraire " + modeText + " vérifié.</strong><br>" +
-                "Distance : " + formatDistance(route.distance) + "<br>" +
-                "Durée estimée : " + formatDuration(route.duration) + "<br>" +
-                "Aucune zone à risque importante n’a été détectée sur ce trajet.",
-                "safe"
-            );
-        } else {
-            const names = dangerousZones.map(function(zone) {
-                return zone.name;
-            }).join(", ");
-
-            updateRouteResult(
-                "<strong>Attention, cet itinéraire traverse des zones signalées.</strong><br>" +
-                "Distance : " + formatDistance(route.distance) + "<br>" +
-                "Durée estimée : " + formatDuration(route.duration) + "<br>" +
-                "Zones concernées : " + names + ".<br>" +
-                "Vous pouvez cliquer sur « Éviter les zones à risque » pour proposer un trajet plus prudent.",
-                "warning"
-            );
-        }
-
+        await calculateAndDisplayRoute([startPoint, endPoint], travelMode, false);
     } catch (error) {
         updateRouteResult(error.message, "warning");
     }
@@ -260,58 +561,28 @@ async function handleSafeRoute() {
     }
 
     try {
-        updateRouteResult("Recherche d’un itinéraire plus sûr...", "loading");
+        updateRouteResult("Recherche d’un itinéraire plus prudent...", "loading");
 
         const startPoint = await geocodeAddress(startValue);
         const endPoint = await geocodeAddress(endValue);
 
         const firstRoute = await getRoute([startPoint, endPoint]);
-        const dangerousZones = findDangerousZonesOnRoute(firstRoute);
+        const alerts = findDangerousAlertsOnRoute(firstRoute);
 
-        if (dangerousZones.length === 0) {
+        if (alerts.length === 0) {
             drawRoute(firstRoute, startPoint, endPoint, true);
-
-            updateRouteResult(
-                "<strong>Votre itinéraire semble déjà éviter les zones principales à risque.</strong><br>" +
-                "Distance : " + formatDistance(firstRoute.distance) + "<br>" +
-                "Durée estimée : " + formatDuration(firstRoute.duration),
-                "safe"
-            );
-
+            const summary = buildRouteSummary(firstRoute, travelMode, [], true);
+            updateRouteResult(summary.message, summary.type);
             return;
         }
 
-        const firstDangerousZone = dangerousZones[0];
-        const detourPoint = createDetourPoint(startPoint, endPoint, firstDangerousZone);
+        const detourPoint = createDetourPoint(startPoint, endPoint, alerts[0]);
+        const result = await calculateAndDisplayRoute([startPoint, detourPoint, endPoint], travelMode, true);
 
-        const safeRoute = await getRoute([startPoint, detourPoint, endPoint]);
-        drawRoute(safeRoute, startPoint, endPoint, true);
-
-        const remainingDangerousZones = findDangerousZonesOnRoute(safeRoute);
-        const modeText = travelMode === "walk" ? "à pied" : "en transport";
-
-        if (remainingDangerousZones.length === 0) {
-            updateRouteResult(
-                "<strong>Itinéraire plus sûr proposé " + modeText + ".</strong><br>" +
-                "Distance : " + formatDistance(safeRoute.distance) + "<br>" +
-                "Durée estimée : " + formatDuration(safeRoute.duration) + "<br>" +
-                "Le trajet évite les principales zones signalées.",
-                "safe"
-            );
-        } else {
-            const names = remainingDangerousZones.map(function(zone) {
-                return zone.name;
-            }).join(", ");
-
-            updateRouteResult(
-                "<strong>Itinéraire alternatif proposé.</strong><br>" +
-                "Distance : " + formatDistance(safeRoute.distance) + "<br>" +
-                "Durée estimée : " + formatDuration(safeRoute.duration) + "<br>" +
-                "Attention : certaines zones sensibles peuvent encore être proches du trajet : " + names + ".",
-                "warning"
-            );
+        if (result.alerts.length > 0) {
+            const summary = buildRouteSummary(result.route, travelMode, result.alerts, true);
+            updateRouteResult(summary.message, summary.type);
         }
-
     } catch (error) {
         updateRouteResult(error.message, "warning");
     }
@@ -321,17 +592,26 @@ function setupRoutePlanner() {
     const routeForm = document.getElementById("routeForm");
     const safeRouteButton = document.getElementById("safeRouteButton");
     const clearRouteButton = document.getElementById("clearRouteButton");
+    const swapRouteButton = document.getElementById("swapRouteButton");
 
     routeForm.addEventListener("submit", handleNormalRoute);
-
     safeRouteButton.addEventListener("click", handleSafeRoute);
+
+    if (swapRouteButton) {
+        swapRouteButton.addEventListener("click", function() {
+            const startInput = document.getElementById("startInput");
+            const endInput = document.getElementById("endInput");
+            const temporaryValue = startInput.value;
+
+            startInput.value = endInput.value;
+            endInput.value = temporaryValue;
+        });
+    }
 
     clearRouteButton.addEventListener("click", function() {
         clearRoute();
-
         document.getElementById("startInput").value = "";
         document.getElementById("endInput").value = "";
-
         updateRouteResult("Aucun itinéraire vérifié pour le moment.");
     });
 }

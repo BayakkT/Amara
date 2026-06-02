@@ -34,10 +34,9 @@
 
     <nav class="map-navbar">
         <div class="map-filters">
-            <button class="filter-btn active" data-risk="all">Toutes les zones</button>
+            <button class="filter-btn active" data-risk="all">Toutes les rues</button>
             <button class="filter-btn" data-risk="high">Risque élevé</button>
             <button class="filter-btn" data-risk="medium">À surveiller</button>
-            <button class="filter-btn" data-risk="safe">Sûr</button>
         </div>
 
         <div class="emergency">
@@ -56,13 +55,13 @@
                 <div class="legend-row">
                     <span class="legend-line high"></span>
                     <p>Rues à risque élevé</p>
-                    <strong id="legendHighCount">0 rues</strong>
+                    <strong id="highStreetCount">0 rue</strong>
                 </div>
 
                 <div class="legend-row">
                     <span class="legend-line medium"></span>
                     <p>Rues à surveiller</p>
-                    <strong id="legendMediumCount">0 rues</strong>
+                    <strong id="mediumStreetCount">0 rue</strong>
                 </div>
             </div>
 
@@ -78,13 +77,13 @@
 
             <span class="risk-badge" id="panelRisk">À surveiller</span>
 
-            <h2 id="panelTitle">Nation / Cours de Vincennes</h2>
-            <p class="district" id="panelDistrict">11e / 12e · Paris</p>
+            <h2 id="panelTitle">Rue signalée</h2>
+            <p class="district" id="panelDistrict">Paris</p>
 
             <div class="separator"></div>
 
             <p class="description" id="panelDescription">
-                Zone de transition avec incidents ponctuels de harcèlement aux abords du métro et en soirée.
+                Sélectionnez une rue sur la carte ou dans la liste pour afficher les détails.
             </p>
 
             <div class="separator"></div>
@@ -92,8 +91,8 @@
             <h3 class="advice-title">⚠ CONSEILS DE SÉCURITÉ</h3>
 
             <div id="panelAdvice" class="advice-list">
-                <p>◆ Attention aux abords du métro la nuit</p>
-                <p>◆ Évitez les traversées de parcs isolés</p>
+                <p>◆ Restez sur les axes principaux et bien éclairés.</p>
+                <p>◆ Prévenez une personne de confiance si vous devez passer par ici.</p>
             </div>
 
             <button class="alert-button" id="openAlertModal">
@@ -108,51 +107,72 @@
     </main>
 
     <section class="route-section" id="routePlanner">
-        <div class="route-header">
-            <div>
-                <h2>Consulter un itinéraire</h2>
-                <p>
-                    Choisissez un point de départ et une destination. Amara vérifie si le trajet passe par des zones signalées.
-                </p>
-            </div>
-        </div>
-
-        <form class="route-form" id="routeForm">
-            <div class="route-field">
-                <label for="startInput">Point de départ</label>
-                <input type="text" id="startInput" placeholder="Ex : Gare de Lyon, Paris" required>
+        <div class="route-card">
+            <div class="route-header">
+                <div>
+                    <span class="route-eyebrow">Navigation</span>
+                    <h2>Consulter un itinéraire</h2>
+                    <p>
+                        Entrez une adresse, une gare, une rue ou un numéro de rue. Amara calcule le trajet et vérifie les rues signalées.
+                    </p>
+                </div>
             </div>
 
-            <div class="route-field">
-                <label for="endInput">Destination</label>
-                <input type="text" id="endInput" placeholder="Ex : Châtelet, Paris" required>
-            </div>
+            <form class="route-form" id="routeForm">
+                <div class="route-field route-field-large">
+                    <label for="startInput">Départ</label>
+                    <div class="route-input-box">
+                        <span class="route-input-icon">●</span>
+                        <input type="text" id="startInput" placeholder="Ex : 20 rue de Rivoli, Paris" autocomplete="street-address" required>
+                    </div>
+                </div>
 
-            <div class="route-field">
-                <label for="travelMode">Mode</label>
-                <select id="travelMode">
-                    <option value="walk">À pied</option>
-                    <option value="transport">Transport</option>
-                </select>
-            </div>
+                <button class="swap-route-button" type="button" id="swapRouteButton" title="Inverser départ et destination">
+                    ⇅
+                </button>
 
-            <div class="route-buttons">
-                <button type="submit">Vérifier l’itinéraire</button>
-                <button type="button" id="safeRouteButton">Éviter les zones à risque</button>
-                <button type="button" id="clearRouteButton">Effacer</button>
-            </div>
-        </form>
+                <div class="route-field route-field-large">
+                    <label for="endInput">Destination</label>
+                    <div class="route-input-box">
+                        <span class="route-input-icon destination">◆</span>
+                        <input type="text" id="endInput" placeholder="Ex : Gare du Nord, Paris" autocomplete="street-address" required>
+                    </div>
+                </div>
 
-        <div class="route-result" id="routeResult">
-            Aucun itinéraire vérifié pour le moment.
+                <div class="route-field route-field-mode">
+                    <label for="travelMode">Mode</label>
+                    <select id="travelMode">
+                        <option value="walk">À pied</option>
+                        <option value="transport">Transport</option>
+                    </select>
+                </div>
+
+                <div class="route-buttons">
+                    <button type="submit" class="primary-route-button">
+                        Vérifier l’itinéraire
+                    </button>
+
+                    <button type="button" id="safeRouteButton" class="secondary-route-button">
+                        Éviter les zones à risque
+                    </button>
+
+                    <button type="button" id="clearRouteButton" class="clear-route-button">
+                        Effacer
+                    </button>
+                </div>
+            </form>
+
+            <div class="route-result" id="routeResult">
+                Aucun itinéraire vérifié pour le moment.
+            </div>
         </div>
     </section>
 
     <section class="zones-list-section">
         <div class="list-header">
             <div>
-                <h2>Zones signalées</h2>
-                <p>Consultez les zones selon leur niveau de risque.</p>
+                <h2>Rues signalées</h2>
+                <p>Consultez les rues selon leur niveau de risque.</p>
             </div>
 
             <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
@@ -171,7 +191,7 @@
             </p>
 
             <form id="alertForm">
-                <label for="street">Nom de la rue ou zone</label>
+                <label for="street">Nom de la rue</label>
                 <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
 
                 <label for="time">Heure de l’incident</label>
@@ -182,7 +202,6 @@
                     <option value="">Choisir un niveau</option>
                     <option value="high">Risque élevé</option>
                     <option value="medium">À surveiller</option>
-                    <option value="safe">Sûr</option>
                 </select>
 
                 <label for="message">Description courte</label>
@@ -204,8 +223,7 @@
 
     <script src="home-data.js"></script>
     <script src="home-actions.js"></script>
-
     <script src="itineraire.js"></script>
-    
+
 </body>
 </html>

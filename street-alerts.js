@@ -509,3 +509,5 @@ const streetAlerts = [
     ]
   }
 ];
+
+window.streetAlerts = streetAlerts;
