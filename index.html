@@ -1,229 +1,199 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amara - Sécurité féminine</title>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="home.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amara - Sécurité féminine</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="home.css">
 </head>
 <body>
+  <header class="site-navbar">
+    <div class="brand">
+      <div class="logo-circle">
+        <span></span>
+      </div>
+      <div>
+        <h1>Amara</h1>
+        <p>SÉCURITÉ FÉMININE</p>
+      </div>
+    </div>
 
-    <header class="site-navbar">
-        <div class="brand">
-            <div class="logo-circle">
-                <span>🛡</span>
-            </div>
-
-            <div>
-                <h1>Amara</h1>
-                <p>SÉCURITÉ FÉMININE</p>
-            </div>
-        </div>
-
-        <nav class="site-links">
-            <a href="index.html">Carte</a>
-            <a href="#routePlanner">Itinéraire</a>
-            <a href="Conseils/conseil.html">Conseils de sécurité</a>
-            <a href="AboutUs/about.html">About us</a>
-        </nav>
-    </header>
-
-    <nav class="map-navbar">
-        <div class="map-filters">
-            <button class="filter-btn active" data-risk="all">Toutes les rues</button>
-            <button class="filter-btn" data-risk="high">Risque élevé</button>
-            <button class="filter-btn" data-risk="medium">À surveiller</button>
-        </div>
-
-        <div class="emergency">
-            Violences aux Femmes : 3919 · Police : 17
-        </div>
+    <nav class="site-links">
+      <a href="index.html">Carte</a>
+      <a href="#routePlanner">Itinéraire</a>
+      <a href="Conseils/conseil.html">Conseils de sécurité</a>
+      <a href="AboutUs/about.html">About us</a>
     </nav>
+  </header>
 
-    <main class="main-layout">
+  <nav class="map-navbar">
+    <div class="map-filters">
+      <button class="filter-btn active" data-risk="all">Toutes les rues</button>
+      <button class="filter-btn" data-risk="high">Risque élevé</button>
+      <button class="filter-btn" data-risk="medium">À surveiller</button>
+    </div>
 
-        <section class="map-section" id="mapSection">
-            <div id="map"></div>
+    <div class="emergency">
+      Violences aux Femmes : 3919 · Police : 17
+    </div>
+  </nav>
 
-            <div class="legend">
-                <h3>LÉGENDE</h3>
+  <main class="main-layout">
+    <section class="map-section" id="mapSection">
+      <div id="map"></div>
 
-                <div class="legend-row">
-                    <span class="legend-line high"></span>
-                    <p>Rues à risque élevé</p>
-                    <strong id="highStreetCount">0 rue</strong>
-                </div>
+      <div class="legend">
+        <h3>LÉGENDE</h3>
 
-                <div class="legend-row">
-                    <span class="legend-line medium"></span>
-                    <p>Rues à surveiller</p>
-                    <strong id="mediumStreetCount">0 rue</strong>
-                </div>
-            </div>
+        <div class="legend-row">
+          <span class="legend-line high"></span>
+          <p>Rues à risque élevé</p>
+          <strong id="highStreetCount">0 rue</strong>
+        </div>
 
-            <div class="map-controls">
-                <button id="zoomIn">+</button>
-                <button id="zoomOut">-</button>
-                <button id="resetMap">□</button>
-            </div>
-        </section>
+        <div class="legend-row">
+          <span class="legend-line medium"></span>
+          <p>Rues à surveiller</p>
+          <strong id="mediumStreetCount">0 rue</strong>
+        </div>
+      </div>
 
-        <aside class="side-panel" id="sidePanel">
-            <button class="close-panel" id="closePanel">×</button>
+      <div class="map-controls">
+        <button id="zoomIn">+</button>
+        <button id="zoomOut">-</button>
+        <button id="resetMap">□</button>
+      </div>
+    </section>
 
-            <span class="risk-badge" id="panelRisk">À surveiller</span>
+    <aside class="side-panel route-side-panel" id="sidePanel">
+      <button class="close-route-panel" id="closeRoutePanel" aria-label="Fermer le panneau de droite">×</button>
 
-            <h2 id="panelTitle">Rue signalée</h2>
-            <p class="district" id="panelDistrict">Paris</p>
-
-            <div class="separator"></div>
-
-            <p class="description" id="panelDescription">
-                Sélectionnez une rue sur la carte ou dans la liste pour afficher les détails.
+      <section class="route-section" id="routePlanner">
+        <div class="route-card">
+          <div class="route-header">
+            <span class="route-eyebrow">Navigation</span>
+            <h2>Consulter un itinéraire</h2>
+            <p>
+              Entrez une adresse, une gare, une rue ou un numéro de rue. Amara calcule le trajet et vérifie les rues signalées.
             </p>
+          </div>
 
-            <div class="separator"></div>
-
-            <h3 class="advice-title">⚠ CONSEILS DE SÉCURITÉ</h3>
-
-            <div id="panelAdvice" class="advice-list">
-                <p>◆ Restez sur les axes principaux et bien éclairés.</p>
-                <p>◆ Prévenez une personne de confiance si vous devez passer par ici.</p>
+          <form class="route-form" id="routeForm">
+            <div class="route-field route-field-large">
+              <label for="startInput">Départ</label>
+              <div class="route-input-box">
+                <span class="route-input-icon">●</span>
+                <input type="text" id="startInput" placeholder="Ex : 20 rue de Rivoli, Paris" autocomplete="street-address" required>
+              </div>
             </div>
 
-            <button class="alert-button" id="openAlertModal">
-                Ajouter une alerte
+            <button class="swap-route-button" type="button" id="swapRouteButton" title="Inverser départ et destination">
+              ⇅
             </button>
 
-            <div class="footer-emergency">
-                En danger ? 3919 violences · 17 police
-            </div>
-        </aside>
-
-    </main>
-
-    <section class="route-section" id="routePlanner">
-        <div class="route-card">
-            <div class="route-header">
-                <div>
-                    <span class="route-eyebrow">Navigation</span>
-                    <h2>Consulter un itinéraire</h2>
-                    <p>
-                        Entrez une adresse, une gare, une rue ou un numéro de rue. Amara calcule le trajet et vérifie les rues signalées.
-                    </p>
-                </div>
+            <div class="route-field route-field-large">
+              <label for="endInput">Destination</label>
+              <div class="route-input-box">
+                <span class="route-input-icon destination">◆</span>
+                <input type="text" id="endInput" placeholder="Ex : Gare du Nord, Paris" autocomplete="street-address" required>
+              </div>
             </div>
 
-            <form class="route-form" id="routeForm">
-                <div class="route-field route-field-large">
-                    <label for="startInput">Départ</label>
-                    <div class="route-input-box">
-                        <span class="route-input-icon">●</span>
-                        <input type="text" id="startInput" placeholder="Ex : 20 rue de Rivoli, Paris" autocomplete="street-address" required>
-                    </div>
-                </div>
-
-                <button class="swap-route-button" type="button" id="swapRouteButton" title="Inverser départ et destination">
-                    ⇅
-                </button>
-
-                <div class="route-field route-field-large">
-                    <label for="endInput">Destination</label>
-                    <div class="route-input-box">
-                        <span class="route-input-icon destination">◆</span>
-                        <input type="text" id="endInput" placeholder="Ex : Gare du Nord, Paris" autocomplete="street-address" required>
-                    </div>
-                </div>
-
-                <div class="route-field route-field-mode">
-                    <label for="travelMode">Mode</label>
-                    <select id="travelMode">
-                        <option value="walk">À pied</option>
-                        <option value="transport">Transport</option>
-                    </select>
-                </div>
-
-                <div class="route-buttons">
-                    <button type="submit" class="primary-route-button">
-                        Vérifier l’itinéraire
-                    </button>
-
-                    <button type="button" id="safeRouteButton" class="secondary-route-button">
-                        Éviter les zones à risque
-                    </button>
-
-                    <button type="button" id="clearRouteButton" class="clear-route-button">
-                        Effacer
-                    </button>
-                </div>
-            </form>
-
-            <div class="route-result" id="routeResult">
-                Aucun itinéraire vérifié pour le moment.
+            <div class="route-field route-field-mode">
+              <label for="travelMode">Mode</label>
+              <select id="travelMode">
+                <option value="walk">À pied</option>
+                <option value="transport">Transport</option>
+              </select>
             </div>
+
+            <div class="route-buttons">
+              <div class="route-left-actions">
+                <button type="submit" class="primary-route-button">Vérifier</button>
+                <button type="button" id="clearRouteButton" class="clear-route-button">Effacer</button>
+              </div>
+
+              <label class="safe-switch" for="safeRouteButton">
+                <span>Éviter les zones à risque</span>
+                <input type="checkbox" id="safeRouteButton">
+                <span class="safe-slider"></span>
+              </label>
+            </div>
+          </form>
+
+          <div class="route-result" id="routeResult">
+            Aucun itinéraire vérifié pour le moment.
+          </div>
         </div>
-    </section>
+      </section>
 
-    <section class="zones-list-section">
-        <div class="list-header">
-            <div>
-                <h2>Rues signalées</h2>
-                <p>Consultez les rues selon leur niveau de risque.</p>
-            </div>
+      <!-- Hidden elements kept only so the existing map/street scripts do not crash. -->
+      <section class="street-details-panel removed-street-panel" aria-hidden="true">
+        <button class="close-panel" id="closePanel" type="button">×</button>
+        <span class="risk-badge" id="panelRisk">À surveiller</span>
+        <h2 id="panelTitle">Rue signalée</h2>
+        <p class="district" id="panelDistrict">Paris</p>
+        <p class="description" id="panelDescription"></p>
+        <div id="panelAdvice" class="advice-list"></div>
+        <button class="alert-button" id="openAlertModal" type="button">Ajouter une alerte</button>
+      </section>
+    </aside>
+  </main>
 
-            <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
-        </div>
+  <section class="zones-list-section">
+    <div class="list-header">
+      <div>
+        <h2>Rues signalées</h2>
+        <p>Consultez les rues selon leur niveau de risque.</p>
+      </div>
 
-        <div class="zones-list" id="zonesList"></div>
-    </section>
-
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <button class="close-modal" id="closeModal">×</button>
-
-            <h2>Ajouter une alerte</h2>
-            <p class="modal-intro">
-                Signalez une situation pour aider les autres utilisatrices.
-            </p>
-
-            <form id="alertForm">
-                <label for="street">Nom de la rue</label>
-                <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
-
-                <label for="time">Heure de l’incident</label>
-                <input type="time" id="time" required>
-
-                <label for="riskLevel">Niveau de risque</label>
-                <select id="riskLevel" required>
-                    <option value="">Choisir un niveau</option>
-                    <option value="high">Risque élevé</option>
-                    <option value="medium">À surveiller</option>
-                </select>
-
-                <label for="message">Description courte</label>
-                <textarea id="message" rows="4" placeholder="Décrivez rapidement la situation..." required></textarea>
-
-                <button type="submit">Envoyer l’alerte</button>
-            </form>
-        </div>
+      <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
     </div>
 
-    <div class="toast" id="toast">
-        Alerte ajoutée avec succès.
+    <div class="zones-list" id="zonesList"></div>
+  </section>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <button class="close-modal" id="closeModal">×</button>
+      <h2>Ajouter une alerte</h2>
+      <p class="modal-intro">
+        Signalez une situation pour aider les autres utilisatrices.
+      </p>
+
+      <form id="alertForm">
+        <label for="street">Nom de la rue</label>
+        <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
+
+        <label for="time">Heure de l’incident</label>
+        <input type="time" id="time" required>
+
+        <label for="riskLevel">Niveau de risque</label>
+        <select id="riskLevel" required>
+          <option value="">Choisir un niveau</option>
+          <option value="high">Risque élevé</option>
+          <option value="medium">À surveiller</option>
+        </select>
+
+        <label for="message">Description courte</label>
+        <textarea id="message" rows="4" placeholder="Décrivez rapidement la situation..." required></textarea>
+
+        <button type="submit">Envoyer l’alerte</button>
+      </form>
     </div>
+  </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <div class="toast" id="toast">
+    Alerte ajoutée avec succès.
+  </div>
 
-    <script src="street-alerts.js"></script>
-    <script src="street-geometries.js"></script>
-
-    <script src="home-data.js"></script>
-    <script src="home-actions.js"></script>
-    <script src="itineraire.js"></script>
-
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="street-alerts.js"></script>
+  <script src="street-geometries.js"></script>
+  <script src="home-data.js"></script>
+  <script src="home-actions.js"></script>
+  <script src="itineraire.js"></script>
 </body>
 </html>
