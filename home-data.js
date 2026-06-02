@@ -176,6 +176,7 @@ const zones = [
 
 let currentRisk = "all";
 let circles = [];
+let streetLayers = [];
 
 const map = L.map("map", {
     zoomControl: false
@@ -200,212 +201,21 @@ const riskColors = {
     }
 };
 
-function getFilteredZones() {
-    if (currentRisk === "all") {
-        return zones;
+const streetRiskColors = {
+    high: {
+        glow: "#8b2be2",
+        line: "#6d28d9"
+    },
+    medium: {
+        glow: "#d946ef",
+        line: "#a855f7"
     }
+};
 
-    return zones.filter(function(zone) {
-        return zone.risk === currentRisk;
+const streetGeometryById = new Map();
+
+if (typeof streetGeometries !== "undefined") {
+    streetGeometries.forEach(function(item) {
+        streetGeometryById.set(item.id, item.geometry);
     });
 }
-
-function renderMapZones() {
-    circles.forEach(function(circle) {
-        map.removeLayer(circle);
-    });
-
-    circles = [];
-
-    const filteredZones = getFilteredZones();
-
-    filteredZones.forEach(function(zone) {
-        const color = riskColors[zone.risk];
-
-        const circle = L.circle(zone.coordinates, {
-            color: color.border,
-            fillColor: color.fill,
-            fillOpacity: 0.22,
-            weight: 3,
-            radius: zone.radius
-        }).addTo(map);
-
-        circle.bindPopup(
-            "<strong>" + zone.name + "</strong><br>" +
-            zone.district + "<br>" +
-            zone.riskLabel
-        );
-
-        circle.on("click", function() {
-            updatePanel(zone);
-            openSidePanel();
-        });
-
-        circles.push(circle);
-    });
-}
-
-function renderZonesList() {
-    const list = document.getElementById("zonesList");
-    list.innerHTML = "";
-
-    const filteredZones = getFilteredZones();
-
-    filteredZones.forEach(function(zone) {
-        const card = document.createElement("div");
-        card.className = "zone-card";
-
-        card.innerHTML = `
-            <div>
-                <div class="zone-card-title">
-                    <span class="zone-card-dot ${zone.risk}"></span>
-                    <span>${zone.name}</span>
-                </div>
-                <p>${zone.district}</p>
-            </div>
-
-            <span class="card-risk ${zone.risk}">
-                ${zone.riskLabel}
-            </span>
-        `;
-
-        card.addEventListener("click", function() {
-            updatePanel(zone);
-            openSidePanel();
-            map.setView(zone.coordinates, 14);
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        });
-
-        list.appendChild(card);
-    });
-}
-
-function updatePanel(zone) {
-    document.getElementById("panelTitle").textContent = zone.name;
-    document.getElementById("panelDistrict").textContent = zone.district;
-    document.getElementById("panelRisk").textContent = zone.riskLabel;
-    document.getElementById("panelDescription").textContent = zone.description;
-
-    const adviceContainer = document.getElementById("panelAdvice");
-    adviceContainer.innerHTML = "";
-
-    zone.advice.forEach(function(item) {
-        const paragraph = document.createElement("p");
-        paragraph.textContent = "◆ " + item;
-        adviceContainer.appendChild(paragraph);
-    });
-}
-
-function setupFilters() {
-    const buttons = document.querySelectorAll(".filter-btn");
-
-    buttons.forEach(function(button) {
-        button.addEventListener("click", function() {
-            buttons.forEach(function(btn) {
-                btn.classList.remove("active");
-            });
-
-            button.classList.add("active");
-            currentRisk = button.dataset.risk;
-
-            renderMapZones();
-            renderZonesList();
-        });
-    });
-}
-
-function setupMapControls() {
-    document.getElementById("zoomIn").addEventListener("click", function() {
-        map.zoomIn();
-    });
-
-    document.getElementById("zoomOut").addEventListener("click", function() {
-        map.zoomOut();
-    });
-
-    document.getElementById("resetMap").addEventListener("click", function() {
-        map.setView([48.8625, 2.35], 13);
-    });
-}
-
-function setupModal() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const openButton = document.getElementById("openAlertModal");
-    const closeButton = document.getElementById("closeModal");
-    const form = document.getElementById("alertForm");
-    const toast = document.getElementById("toast");
-
-    openButton.addEventListener("click", function() {
-        modalOverlay.classList.add("active");
-    });
-
-    closeButton.addEventListener("click", function() {
-        modalOverlay.classList.remove("active");
-    });
-
-    modalOverlay.addEventListener("click", function(event) {
-        if (event.target === modalOverlay) {
-            modalOverlay.classList.remove("active");
-        }
-    });
-
-    form.addEventListener("submit", function(event) {
-        event.preventDefault();
-
-        modalOverlay.classList.remove("active");
-        form.reset();
-
-        toast.classList.add("active");
-
-        setTimeout(function() {
-            toast.classList.remove("active");
-        }, 2500);
-    });
-}
-
-function openSidePanel() {
-    const panel = document.getElementById("sidePanel");
-    panel.style.display = "block";
-}
-
-function setupOtherButtons() {
-    document.getElementById("closePanel").addEventListener("click", function() {
-        const panel = document.getElementById("sidePanel");
-        panel.style.display = "none";
-    });
-
-    document.getElementById("showAllZones").addEventListener("click", function() {
-        currentRisk = "all";
-
-        const buttons = document.querySelectorAll(".filter-btn");
-
-        buttons.forEach(function(button) {
-            button.classList.remove("active");
-
-            if (button.dataset.risk === "all") {
-                button.classList.add("active");
-            }
-        });
-
-        renderMapZones();
-        renderZonesList();
-    });
-}
-
-function initHome() {
-    setupFilters();
-    setupMapControls();
-    setupModal();
-    setupOtherButtons();
-
-    renderMapZones();
-    renderZonesList();
-
-    updatePanel(zones[5]);
-}
-
-initHome();

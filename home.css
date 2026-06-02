@@ -89,7 +89,7 @@
 
 .legend-row {
     display: grid;
-    grid-template-columns: 18px 1fr auto;
+    grid-template-columns: 34px 1fr auto;
     align-items: center;
     gap: 10px;
     margin: 12px 0;
@@ -113,6 +113,23 @@
 
 .legend-dot.safe {
     border: 3px solid #7b61c9;
+}
+
+.legend-line {
+    width: 34px;
+    height: 8px;
+    border-radius: 999px;
+    display: block;
+}
+
+.legend-line.high {
+    background-color: #6d28d9;
+    box-shadow: 0 0 0 7px rgba(139, 43, 226, 0.18);
+}
+
+.legend-line.medium {
+    background-color: #a855f7;
+    box-shadow: 0 0 0 7px rgba(217, 70, 239, 0.16);
 }
 
 .legend strong {

@@ -54,21 +54,15 @@
                 <h3>LÉGENDE</h3>
 
                 <div class="legend-row">
-                    <span class="legend-dot high"></span>
-                    <p>Risque élevé</p>
-                    <strong>5 zones</strong>
+                    <span class="legend-line high"></span>
+                    <p>Rues à risque élevé</p>
+                    <strong id="legendHighCount">0 rues</strong>
                 </div>
 
                 <div class="legend-row">
-                    <span class="legend-dot medium"></span>
-                    <p>À surveiller</p>
-                    <strong>4 zones</strong>
-                </div>
-
-                <div class="legend-row">
-                    <span class="legend-dot safe"></span>
-                    <p>Globalement sûr</p>
-                    <strong>3 zones</strong>
+                    <span class="legend-line medium"></span>
+                    <p>Rues à surveiller</p>
+                    <strong id="legendMediumCount">0 rues</strong>
                 </div>
             </div>
 
@@ -204,7 +198,14 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js"></script>
+
+    <script src="street-alerts.js"></script>
+    <script src="street-geometries.js"></script>
+
+    <script src="home-data.js"></script>
+    <script src="home-actions.js"></script>
+
     <script src="itineraire.js"></script>
+    
 </body>
 </html>
