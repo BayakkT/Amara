@@ -1,3 +1,22 @@
+
+/* Sticky top navbar */
+.site-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  background-color: #fff1f8;
+  box-shadow: 0 2px 12px rgba(92, 39, 76, 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+#routePlanner,
+.main-layout {
+  scroll-margin-top: 120px;
+}
+
 /* Navbar above the map */
 .map-navbar {
   min-height: 70px;
@@ -349,7 +368,8 @@
   gap: 8px;
 }
 
-.route-field label {
+.route-field label,
+.route-mode-label {
   color: #704166;
   font-weight: bold;
 }
@@ -379,6 +399,58 @@
 
 .route-input-icon.destination {
   color: #7b61c9;
+}
+
+.route-mode-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.mode-option {
+  min-height: 76px;
+  border: 1px solid #e4c2d8;
+  border-radius: 20px;
+  background-color: #fff;
+  color: #704166;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mode-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.mode-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+}
+
+.mode-option:hover {
+  transform: translateY(-1px);
+  background-color: #fff7fc;
+  border-color: #d99ac0;
+}
+
+.mode-option.active {
+  background-color: #f1d7e8;
+  border-color: #bd5c93;
+  color: #2d0f28;
+  box-shadow: 0 8px 18px rgba(189, 92, 147, 0.16);
 }
 
 .route-field input,
@@ -510,29 +582,26 @@
 }
 
 .route-result {
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: 20px;
-  background-color: #fff7fc;
-  border: 1px solid #ead0e2;
+  display: none;
+  margin-top: 14px;
   color: #74436b;
   line-height: 1.6;
+  font-size: 15px;
+}
+
+.route-result.visible {
+  display: block;
 }
 
 .route-result.safe {
-  border-color: #c9bced;
-  background-color: #f4f0ff;
   color: #55429a;
 }
 
 .route-result.warning {
-  border-color: #f2a6ce;
-  background-color: #fff0f7;
   color: #b32570;
 }
 
 .route-result.loading {
-  border-color: #e4c2d8;
   color: #7c4b75;
 }
 

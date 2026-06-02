@@ -173,32 +173,74 @@ async function geocodeAddress(address) {
   }
 }
 
-function getRouteProfile() {
+function getRouteProfile(travelMode) {
+  if (travelMode === "walk") {
+    return "foot";
+  }
+
+  if (travelMode === "bike") {
+    return "bike";
+  }
+
   return "driving";
 }
 
-async function getRoute(points) {
+async function getRoute(points, travelMode) {
   const coordinates = points.map(function(point) {
     return point.lon + "," + point.lat;
   }).join(";");
 
   const params = "overview=full&geometries=geojson&steps=true&alternatives=false";
-  const url = "https://router.project-osrm.org/route/v1/" + getRouteProfile() + "/" + coordinates + "?" + params;
-  const data = await fetchJsonWithProxyFallback(url, "Impossible de calculer cet itinéraire. Vérifiez votre connexion ou réessayez plus tard.");
+  const profile = getRouteProfile(travelMode);
+  const url = "https://router.project-osrm.org/route/v1/" + profile + "/" + coordinates + "?" + params;
 
-  if (!data.routes || data.routes.length === 0) {
-    throw new Error("Impossible de calculer cet itinéraire.");
+  try {
+    const data = await fetchJsonWithProxyFallback(url, "Impossible de calculer cet itinéraire. Vérifiez votre connexion ou réessayez plus tard.");
+
+    if (!data.routes || data.routes.length === 0) {
+      throw new Error("Impossible de calculer cet itinéraire.");
+    }
+
+    return data.routes[0];
+  } catch (error) {
+    if (profile === "driving") {
+      throw error;
+    }
+
+    const fallbackUrl = "https://router.project-osrm.org/route/v1/driving/" + coordinates + "?" + params;
+    const fallbackData = await fetchJsonWithProxyFallback(fallbackUrl, "Impossible de calculer cet itinéraire. Vérifiez votre connexion ou réessayez plus tard.");
+
+    if (!fallbackData.routes || fallbackData.routes.length === 0) {
+      throw new Error("Impossible de calculer cet itinéraire.");
+    }
+
+    fallbackData.routes[0].usedFallbackProfile = true;
+    return fallbackData.routes[0];
   }
-
-  return data.routes[0];
 }
 
 function getDisplayedDuration(route, travelMode) {
   if (travelMode === "walk") {
-    return route.distance / 1.35;
+    return route.usedFallbackProfile ? route.distance / 1.35 : route.duration || route.distance / 1.35;
   }
 
-  return route.duration;
+  if (travelMode === "bike") {
+    return route.usedFallbackProfile ? route.distance / 4.2 : route.duration || route.distance / 4.2;
+  }
+
+  return Math.max(route.duration * 1.55, route.distance / 7.5 + 420);
+}
+
+function getModeText(travelMode) {
+  if (travelMode === "bike") {
+    return "à vélo";
+  }
+
+  if (travelMode === "public") {
+    return "en transport";
+  }
+
+  return "à pied";
 }
 
 function createRouteMarker(point, label) {
@@ -451,8 +493,15 @@ function updateRouteResult(message, type) {
     return;
   }
 
-  result.innerHTML = message;
   result.className = "route-result";
+
+  if (!message) {
+    result.innerHTML = "";
+    return;
+  }
+
+  result.innerHTML = message;
+  result.classList.add("visible");
 
   if (type) {
     result.classList.add(type);
@@ -460,13 +509,17 @@ function updateRouteResult(message, type) {
 }
 
 function buildRouteSummary(route, travelMode, alerts, isSafeRoute) {
-  const modeText = travelMode === "walk" ? "à pied" : "en transport";
+  const modeText = getModeText(travelMode);
   const duration = getDisplayedDuration(route, travelMode);
 
   let message =
     "<strong>Itinéraire " + modeText + " calculé.</strong><br>" +
     "Distance : " + formatDistance(route.distance) + "<br>" +
     "Durée estimée : " + formatDuration(duration) + "<br>";
+
+  if (travelMode === "public") {
+    message += "La durée du transport est une estimation, sans horaires RATP/SNCF en temps réel pour le moment.<br>";
+  }
 
   if (alerts.length === 0) {
     message += isSafeRoute ?
@@ -504,7 +557,7 @@ async function calculateRoute(avoidRisk) {
     const startPoint = await geocodeAddress(startValue);
     const endPoint = await geocodeAddress(endValue);
 
-    const normalRoute = await getRoute([startPoint, endPoint]);
+    const normalRoute = await getRoute([startPoint, endPoint], travelMode);
     const normalAlerts = findDangerousAlertsOnRoute(normalRoute);
 
     let routeToDraw = normalRoute;
@@ -518,7 +571,7 @@ async function calculateRoute(avoidRisk) {
       })[0];
 
       const detourPoint = createDetourPoint(startPoint, endPoint, alertToAvoid);
-      const detourRoute = await getRoute([startPoint, detourPoint, endPoint]);
+      const detourRoute = await getRoute([startPoint, detourPoint, endPoint], travelMode);
       const detourAlerts = findDangerousAlertsOnRoute(detourRoute);
 
       if (detourAlerts.length <= normalAlerts.length) {
@@ -556,6 +609,11 @@ function openRouteSidePanel(focusInput) {
 
   mainLayout.classList.remove("side-panel-closed");
   sidePanel.classList.remove("is-closed");
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
 
   setTimeout(function() {
     if (typeof map !== "undefined" && map.invalidateSize) {
@@ -607,6 +665,36 @@ function setupRouteSidePanelToggle() {
   }
 }
 
+function setupModeButtons() {
+  const travelModeInput = document.getElementById("travelMode");
+  const modeButtons = document.querySelectorAll(".mode-option");
+  const safeRouteButton = document.getElementById("safeRouteButton");
+  const startInput = document.getElementById("startInput");
+  const endInput = document.getElementById("endInput");
+
+  if (!travelModeInput || modeButtons.length === 0) {
+    return;
+  }
+
+  modeButtons.forEach(function(button) {
+    button.addEventListener("click", function() {
+      const selectedMode = button.dataset.mode;
+
+      travelModeInput.value = selectedMode;
+
+      modeButtons.forEach(function(item) {
+        const isActive = item === button;
+        item.classList.toggle("active", isActive);
+        item.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      if (startInput && endInput && startInput.value.trim() !== "" && endInput.value.trim() !== "") {
+        calculateRoute(safeRouteButton ? safeRouteButton.checked : false);
+      }
+    });
+  });
+}
+
 function setupRoutePlanner() {
   const routeForm = document.getElementById("routeForm");
   const safeRouteButton = document.getElementById("safeRouteButton");
@@ -614,6 +702,8 @@ function setupRoutePlanner() {
   const swapRouteButton = document.getElementById("swapRouteButton");
   const startInput = document.getElementById("startInput");
   const endInput = document.getElementById("endInput");
+
+  setupModeButtons();
 
   if (!routeForm || !safeRouteButton || !clearRouteButton || !swapRouteButton || !startInput || !endInput) {
     return;
@@ -637,7 +727,7 @@ function setupRoutePlanner() {
     startInput.value = "";
     endInput.value = "";
     safeRouteButton.checked = false;
-    updateRouteResult("Aucun itinéraire vérifié pour le moment.");
+    updateRouteResult("");
   });
 
   swapRouteButton.addEventListener("click", function() {

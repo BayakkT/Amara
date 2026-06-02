@@ -75,9 +75,6 @@
           <div class="route-header">
             <span class="route-eyebrow">Navigation</span>
             <h2>Consulter un itinéraire</h2>
-            <p>
-              Entrez une adresse, une gare, une rue ou un numéro de rue. Amara calcule le trajet et vérifie les rues signalées.
-            </p>
           </div>
 
           <form class="route-form" id="routeForm">
@@ -102,11 +99,47 @@
             </div>
 
             <div class="route-field route-field-mode">
-              <label for="travelMode">Mode</label>
-              <select id="travelMode">
-                <option value="walk">À pied</option>
-                <option value="transport">Transport</option>
-              </select>
+              <span class="route-mode-label">Mode</span>
+              <div class="route-mode-picker" role="radiogroup" aria-label="Mode de transport">
+                <button type="button" class="mode-option active" data-mode="walk" aria-pressed="true">
+                  <span class="mode-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" focusable="false">
+                      <circle cx="34" cy="10" r="7"></circle>
+                      <path d="M30 20c-4 1-7 4-9 8l-5 10c-1 2 0 5 2 6s5 0 6-2l4-8 5 5-2 10-7 8c-2 2-2 5 0 7 2 1 5 1 7-1l8-9c1-1 2-3 2-5l1-7 6 5v11c0 3 2 5 5 5s5-2 5-5V45c0-2-1-4-3-5l-10-8-3-8c-1-3-4-5-8-4z"></path>
+                      <path d="M19 15c0-2 1-3 3-3h6v5h-5v9h-5V15z"></path>
+                    </svg>
+                  </span>
+                  <span>À pied</span>
+                </button>
+
+                <button type="button" class="mode-option" data-mode="bike" aria-pressed="false">
+                  <span class="mode-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" focusable="false">
+                      <circle cx="18" cy="45" r="11" fill="none" stroke="currentColor" stroke-width="6"></circle>
+                      <circle cx="48" cy="45" r="11" fill="none" stroke="currentColor" stroke-width="6"></circle>
+                      <circle cx="39" cy="13" r="5"></circle>
+                      <path d="M35 19h8c2 0 4 2 4 4s-2 4-4 4h-4l6 16h-7l-5-12-9 12h-7l11-16h-7c-2 0-4-2-4-4s2-4 4-4h14z"></path>
+                      <path d="M21 16h8v6h-8z"></path>
+                    </svg>
+                  </span>
+                  <span>Vélo</span>
+                </button>
+
+                <button type="button" class="mode-option" data-mode="public" aria-pressed="false">
+                  <span class="mode-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" focusable="false">
+                      <path d="M16 6h32c5 0 9 4 9 9v28c0 5-4 9-9 9H16c-5 0-9-4-9-9V15c0-5 4-9 9-9z"></path>
+                      <path d="M15 14h14v18H15zM35 14h14v18H35z" fill="white"></path>
+                      <circle cx="20" cy="42" r="4" fill="white"></circle>
+                      <circle cx="44" cy="42" r="4" fill="white"></circle>
+                      <path d="M18 52h10l-7 8h-9zM36 52h10l6 8h-9z"></path>
+                      <path d="M12 20H6v15h6zM58 20h-6v15h6z"></path>
+                    </svg>
+                  </span>
+                  <span>Transport</span>
+                </button>
+              </div>
+              <input type="hidden" id="travelMode" value="walk">
             </div>
 
             <div class="route-buttons">
@@ -123,9 +156,7 @@
             </div>
           </form>
 
-          <div class="route-result" id="routeResult">
-            Aucun itinéraire vérifié pour le moment.
-          </div>
+          <div class="route-result" id="routeResult" aria-live="polite"></div>
         </div>
       </section>
 
