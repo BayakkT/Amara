@@ -75,6 +75,9 @@
           <div class="route-header">
             <span class="route-eyebrow">Navigation</span>
             <h2>Consulter un itinéraire</h2>
+            <p>
+              Entrez une adresse, une gare, une rue ou un numéro de rue. Amara calcule le trajet et vérifie les rues signalées.
+            </p>
           </div>
 
           <form class="route-form" id="routeForm">
@@ -173,18 +176,12 @@
     </aside>
   </main>
 
-  <section class="zones-list-section">
-    <div class="list-header">
-      <div>
-        <h2>Rues signalées</h2>
-        <p>Consultez les rues selon leur niveau de risque.</p>
-      </div>
-
-      <button class="show-list-btn" id="showAllZones">Afficher toutes</button>
-    </div>
-
+  <!-- Hidden compatibility container for existing scripts.
+       The visible “Rues signalées” list has been removed so the page stays focused on the map. -->
+  <div class="zones-list-section zones-list-section-hidden" aria-hidden="true">
+    <button class="show-list-btn" id="showAllZones" type="button">Afficher toutes</button>
     <div class="zones-list" id="zonesList"></div>
-  </section>
+  </div>
 
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">

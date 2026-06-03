@@ -12,6 +12,11 @@ html {
   scroll-behavior: smooth;
 }
 
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
 #routePlanner,
 .main-layout {
   scroll-margin-top: 120px;
@@ -75,6 +80,8 @@ html {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 460px;
   height: calc(100vh - 152px);
+  min-height: 620px;
+  background-color: #fff7fc;
 }
 
 .map-section {
@@ -609,108 +616,11 @@ html {
   color: inherit;
 }
 
-/* Street list */
+/* Street list removed from the visible page.
+   The container stays hidden only to avoid breaking older JavaScript that expects these IDs. */
+.zones-list-section-hidden,
 .zones-list-section {
-  background-color: #fff7fc;
-  border-top: 1px solid #ead0e2;
-  padding: 30px;
-}
-
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 22px;
-}
-
-.list-header h2 {
-  font-family: Georgia, serif;
-  font-size: 28px;
-}
-
-.list-header p {
-  color: #8a6087;
-  margin-top: 6px;
-}
-
-.show-list-btn {
-  background-color: #bd5c93;
-  color: white;
-  border: none;
-  border-radius: 18px;
-  padding: 12px 18px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.show-list-btn:hover {
-  background-color: #a94e82;
-}
-
-.zones-list {
-  display: grid;
-  gap: 14px;
-}
-
-.zone-card {
-  background-color: #fff7fc;
-  border: 1px solid #ead0e2;
-  border-radius: 18px;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.zone-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 14px rgba(92, 39, 76, 0.12);
-}
-
-.zone-card-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 20px;
-  font-weight: bold;
-  color: #1f0c1e;
-}
-
-.zone-card-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.zone-card-dot.high {
-  background-color: #e24391;
-}
-
-.zone-card-dot.medium {
-  background-color: #9f5488;
-}
-
-.zone-card p {
-  margin-top: 15px;
-  color: #7c4b75;
-  font-weight: bold;
-  letter-spacing: 2px;
-}
-
-.card-risk {
-  border: 1px solid #f2a6ce;
-  color: #d11c76;
-  border-radius: 18px;
-  padding: 8px 14px;
-  background-color: #fff0f7;
-  font-weight: bold;
-}
-
-.card-risk.medium {
-  color: #8d4b80;
-  border-color: #ddb9d5;
+  display: none !important;
 }
 
 /* Modal */
