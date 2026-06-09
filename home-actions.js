@@ -1,71 +1,20 @@
-function getFilteredStreets() {
-    if (typeof streetAlerts === "undefined") {
-        return [];
-    }
-
+function getFilteredZones() {
     if (currentRisk === "all") {
-        return streetAlerts;
+        return zones;
     }
-
-    return streetAlerts.filter(function(street) {
-        return street.risk === currentRisk;
+    return zones.filter(function(zone) {
+        return zone.risk === currentRisk;
     });
-}
-
-function clearMapLayers() {
-    if (typeof circles !== "undefined") {
-        circles.forEach(function(circle) {
-            map.removeLayer(circle);
-        });
-        circles = [];
-    }
-
-    if (typeof streetLayers !== "undefined") {
-        streetLayers.forEach(function(layer) {
-            map.removeLayer(layer);
-        });
-        streetLayers = [];
-    }
-}
-
-function createStreetPopup(street) {
-    let articleHtml = "";
-
-    if (street.articles && street.articles.length > 0) {
-        const firstArticle = street.articles[0];
-        articleHtml =
-            "<br><br>" +
-            "<strong>Source :</strong> " + firstArticle.source + "<br>" +
-            "<strong>Date :</strong> " + firstArticle.date + "<br>" +
-            "<a href='" + firstArticle.url + "' target='_blank'>Voir l'article</a>";
-    }
-
-    return (
-        "<strong>" + street.street + "</strong><br>" +
-        street.commune + " · " + street.dept + "<br>" +
-        street.riskLabel +
-        articleHtml
-    );
-}
-
-function getStreetGeometryById(streetId) {
-    if (typeof streetGeometries === "undefined") {
-        return null;
-    }
-
-    const foundStreet = streetGeometries.find(function(item) {
-        return item.id === streetId;
-    });
-
-    return !foundStreet ? null : foundStreet.geometry;
 }
 
 function renderMapZones() {
-    clearMapLayers();
+    circles.forEach(function(circle) {
+        map.removeLayer(circle);
+    });
+    circles = [];
 
-    // 1. Affichage des Cercles (Base de données MySQL)
-    const filteredZones = currentRisk === "all" ? zones : zones.filter(function(z) { return z.risk === currentRisk; });
-    
+    const filteredZones = getFilteredZones();
+
     filteredZones.forEach(function(zone) {
         const color = riskColors[zone.risk];
 
@@ -84,61 +33,21 @@ function renderMapZones() {
         );
 
         circle.on("click", function() {
-            updatePanelFromZone(zone);
+            updatePanel(zone);
             openSidePanel();
         });
 
         circles.push(circle);
-    });
-
-    // 2. Affichage des Rues (Données de Tat)
-    if (typeof streetAlerts === "undefined" || typeof streetGeometries === "undefined" || typeof streetRiskColors === "undefined") {
-        return;
-    }
-
-    const filteredStreets = getFilteredStreets();
-
-    filteredStreets.forEach(function(street) {
-        const geometry = getStreetGeometryById(street.id);
-
-        if (!geometry) return;
-
-        const colors = streetRiskColors[street.risk];
-        if (!colors) return;
-
-        const glowLayer = L.polyline(geometry, {
-            color: colors.glow,
-            weight: 20,
-            opacity: 0.25,
-            lineCap: "round",
-            lineJoin: "round",
-            interactive: false
-        }).addTo(map);
-
-        const lineLayer = L.polyline(geometry, {
-            color: colors.line,
-            weight: 7,
-            opacity: 0.9,
-            lineCap: "round",
-            lineJoin: "round"
-        }).addTo(map);
-
-        lineLayer.bindPopup(createStreetPopup(street));
-
-        streetLayers.push(glowLayer);
-        streetLayers.push(lineLayer);
     });
 }
 
 function renderZonesList() {
     const list = document.getElementById("zonesList");
     if (!list) return;
-
     list.innerHTML = "";
 
-    // Afficher la liste des cercles (MySQL)
-    const filteredZones = currentRisk === "all" ? zones : zones.filter(function(z) { return z.risk === currentRisk; });
-    
+    const filteredZones = getFilteredZones();
+
     filteredZones.forEach(function(zone) {
         const card = document.createElement("div");
         card.className = "zone-card";
@@ -151,11 +60,13 @@ function renderZonesList() {
                 </div>
                 <p>${zone.district}</p>
             </div>
-            <span class="card-risk ${zone.risk}">${zone.riskLabel}</span>
+            <span class="card-risk ${zone.risk}">
+                ${zone.riskLabel}
+            </span>
         `;
 
         card.addEventListener("click", function() {
-            updatePanelFromZone(zone);
+            updatePanel(zone);
             openSidePanel();
             map.setView(zone.coordinates, 14);
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -163,132 +74,39 @@ function renderZonesList() {
 
         list.appendChild(card);
     });
-
-    // Afficher la liste des rues (Tat)
-    const filteredStreets = getFilteredStreets();
-
-    filteredStreets.forEach(function(street) {
-        const card = document.createElement("div");
-        card.className = "zone-card";
-        let dotClass = street.risk === "high" ? "high" : "medium";
-
-        card.innerHTML = `
-            <div>
-                <div class="zone-card-title">
-                    <span class="zone-card-dot ${dotClass}"></span>
-                    ${street.street}
-                </div>
-                <p>${street.commune} · ${street.dept}</p>
-            </div>
-            <span class="card-risk ${street.risk}">
-                ${street.riskLabel}
-            </span>
-        `;
-
-        card.addEventListener("click", function() {
-            updatePanelFromStreet(street);
-            openSidePanel();
-
-            const geometry = getStreetGeometryById(street.id);
-            if (geometry && geometry.length > 0) {
-                map.setView(geometry[0], 15);
-            }
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-
-        list.appendChild(card);
-    });
 }
 
-// Fonction pour mettre à jour le panneau latéral pour une zone circulaire (MySQL)
-function updatePanelFromZone(zone) {
+function updatePanel(zone) {
     const panelTitle = document.getElementById("panelTitle");
     const panelDistrict = document.getElementById("panelDistrict");
     const panelRisk = document.getElementById("panelRisk");
     const panelDescription = document.getElementById("panelDescription");
     const adviceContainer = document.getElementById("panelAdvice");
 
-    if (!panelTitle) return;
+    if (panelTitle) panelTitle.textContent = zone.name;
+    if (panelDistrict) panelDistrict.textContent = zone.district;
+    if (panelRisk) panelRisk.textContent = zone.riskLabel;
+    if (panelDescription) panelDescription.textContent = zone.description;
 
-    panelTitle.textContent = zone.name;
-    panelDistrict.textContent = zone.district;
-    panelRisk.textContent = zone.riskLabel;
-    panelDescription.textContent = zone.description;
-    
-    adviceContainer.innerHTML = "";
-    if(zone.advice && Array.isArray(zone.advice)) {
-        zone.advice.forEach(function(item) {
-            const paragraph = document.createElement("p");
-            paragraph.textContent = "◆ " + item;
-            adviceContainer.appendChild(paragraph);
-        });
+    if (adviceContainer) {
+        adviceContainer.innerHTML = "";
+        if (zone.advice && Array.isArray(zone.advice)) {
+            zone.advice.forEach(function(item) {
+                const paragraph = document.createElement("p");
+                paragraph.textContent = "◆ " + item;
+                adviceContainer.appendChild(paragraph);
+            });
+        }
     }
-}
-
-function updatePanelFromStreet(street) {
-    const panelTitle = document.getElementById("panelTitle");
-    const panelDistrict = document.getElementById("panelDistrict");
-    const panelRisk = document.getElementById("panelRisk");
-    const panelDescription = document.getElementById("panelDescription");
-    const adviceContainer = document.getElementById("panelAdvice");
-
-    if (!panelTitle) return;
-
-    panelTitle.textContent = street.street;
-    panelDistrict.textContent = street.commune + " · " + street.dept;
-    panelRisk.textContent = street.riskLabel;
-
-    let description = "Rue signalée sur la carte Amara.";
-    if (street.articles && street.articles.length > 0) {
-        description = street.articles[0].summary;
-    }
-    panelDescription.textContent = description;
-
-    adviceContainer.innerHTML = "";
-    const advice = [
-        "Restez sur les axes principaux et bien éclairés.",
-        "Évitez de rester seule longtemps dans cette rue, surtout tard le soir.",
-        "Prévenez une personne de confiance si vous devez passer par ici."
-    ];
-
-    advice.forEach(function(item) {
-        const paragraph = document.createElement("p");
-        paragraph.textContent = "◆ " + item;
-        adviceContainer.appendChild(paragraph);
-    });
-}
-
-function formatStreetCount(count) {
-    if (count <= 1) return count + " rue";
-    return count + " rues";
-}
-
-function updateStreetLegend() {
-    if (typeof streetAlerts === "undefined") return;
-
-    const highCount = streetAlerts.filter(function(street) { return street.risk === "high"; }).length;
-    const mediumCount = streetAlerts.filter(function(street) { return street.risk === "medium"; }).length;
-
-    const highElement = document.getElementById("highStreetCount");
-    const mediumElement = document.getElementById("mediumStreetCount");
-
-    if (highElement) highElement.textContent = formatStreetCount(highCount);
-    if (mediumElement) mediumElement.textContent = formatStreetCount(mediumCount);
 }
 
 function setupFilters() {
     const buttons = document.querySelectorAll(".filter-btn");
-
     buttons.forEach(function(button) {
         button.addEventListener("click", function() {
-            buttons.forEach(function(btn) {
-                btn.classList.remove("active");
-            });
-
+            buttons.forEach(btn => btn.classList.remove("active"));
             button.classList.add("active");
             currentRisk = button.dataset.risk;
-
             renderMapZones();
             renderZonesList();
         });
@@ -300,44 +118,71 @@ function setupMapControls() {
     const zoomOut = document.getElementById("zoomOut");
     const resetMap = document.getElementById("resetMap");
 
-    if (zoomIn) zoomIn.addEventListener("click", function() { map.zoomIn(); });
-    if (zoomOut) zoomOut.addEventListener("click", function() { map.zoomOut(); });
-    if (resetMap) resetMap.addEventListener("click", function() { map.setView([48.8625, 2.35], 13); });
+    if (zoomIn) zoomIn.addEventListener("click", () => map.zoomIn());
+    if (zoomOut) zoomOut.addEventListener("click", () => map.zoomOut());
+    if (resetMap) resetMap.addEventListener("click", () => map.setView([48.8625, 2.35], 13));
+}
+
+function openSidePanel() {
+    const panel = document.getElementById("sidePanel");
+    if (panel) panel.style.display = "block";
 }
 
 function setupModal() {
     const modalOverlay = document.getElementById("modalOverlay");
-    const openButton = document.getElementById("openAlertModal");
+    const openNavbar = document.getElementById("openAlertModalNavbar");
+    const openSide = document.getElementById("openAlertModalSide");
     const closeButton = document.getElementById("closeModal");
     const form = document.getElementById("alertForm");
     const toast = document.getElementById("toast");
+    const btnNow = document.getElementById("btnNow");
 
-    if (openButton && modalOverlay) {
-        openButton.addEventListener("click", function() { modalOverlay.classList.add("active"); });
-    }
-
-    if (closeButton && modalOverlay) {
-        closeButton.addEventListener("click", function() { modalOverlay.classList.remove("active"); });
-    }
-
-    if (modalOverlay) {
-        modalOverlay.addEventListener("click", function(event) {
-            if (event.target === modalOverlay) {
-                modalOverlay.classList.remove("active");
-            }
+    // Bouton Heure actuelle "Maintenant"
+    if (btnNow) {
+        btnNow.addEventListener("click", function() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById("time").value = `${hours}:${minutes}`;
         });
     }
 
-    // Gestion de l'ajout d'alerte en PHP
+    if (openNavbar) openNavbar.addEventListener("click", () => modalOverlay.classList.add("active"));
+    if (openSide) openSide.addEventListener("click", () => modalOverlay.classList.add("active"));
+    if (closeButton) closeButton.addEventListener("click", () => modalOverlay.classList.remove("active"));
+
+    if (modalOverlay) {
+        modalOverlay.addEventListener("click", function(event) {
+            if (event.target === modalOverlay) modalOverlay.classList.remove("active");
+        });
+    }
+
     if (form) {
         form.addEventListener("submit", async function(event) {
             event.preventDefault();
+            const streetValue = document.getElementById("street").value.trim();
+
+            let lat = null, lon = null;
+            try {
+                // Requête de géocodage vers Nominatim OpenStreetMap limitée à la région Île-de-France
+                const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(streetValue + ", Ile-de-France, France");
+                const res = await fetch(url);
+                const geoData = await res.json();
+                if (geoData.length > 0) {
+                    lat = parseFloat(geoData[0].lat);
+                    lon = parseFloat(geoData[0].lon);
+                }
+            } catch(e) {
+                console.error("Erreur géocodage :", e);
+            }
 
             const alertData = {
-                street: document.getElementById("street").value,
+                street: streetValue,
                 time: document.getElementById("time").value,
                 riskLevel: document.getElementById("riskLevel").value,
-                message: document.getElementById("message").value
+                message: document.getElementById("message").value,
+                latitude: lat,
+                longitude: lon
             };
 
             try {
@@ -346,32 +191,26 @@ function setupModal() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(alertData)
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
-                    if (modalOverlay) modalOverlay.classList.remove("active");
+                    modalOverlay.classList.remove("active");
                     form.reset();
-
                     if (toast) {
-                        toast.textContent = result.message; 
+                        toast.textContent = result.message;
                         toast.classList.add("active");
-                        setTimeout(function() { toast.classList.remove("active"); }, 2500);
+                        setTimeout(() => toast.classList.remove("active"), 2500);
                     }
+                    // Met à jour instantanément la carte avec la nouvelle alerte positionnée
+                    fetchAlerts();
                 } else {
                     alert(result.message);
                 }
             } catch (error) {
-                console.error("Erreur lors de l'envoi de l'alerte :", error);
-                alert("Une erreur s'est produite lors de l'envoi de l'alerte.");
+                alert("Erreur lors de l'envoi de la demande.");
             }
         });
     }
-}
-
-function openSidePanel() {
-    const panel = document.getElementById("sidePanel");
-    if (panel) panel.style.display = "block";
 }
 
 function setupOtherButtons() {
@@ -383,44 +222,184 @@ function setupOtherButtons() {
         });
     }
 
-    const showAllButton = document.getElementById("showAllZones");
-    if (showAllButton) {
-        showAllButton.addEventListener("click", function() {
+    const showAllZones = document.getElementById("showAllZones");
+    if (showAllZones) {
+        showAllZones.addEventListener("click", function() {
             currentRisk = "all";
             const buttons = document.querySelectorAll(".filter-btn");
-
             buttons.forEach(function(button) {
                 button.classList.remove("active");
-                if (button.dataset.risk === "all") {
-                    button.classList.add("active");
-                }
+                if (button.dataset.risk === "all") button.classList.add("active");
             });
-
             renderMapZones();
             renderZonesList();
         });
     }
 }
 
+// --- LOGIQUE DE CALCUL D'ITINÉRAIRE ---
+async function geocodeAddress(address) {
+    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(address + ", Paris, France");
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.length === 0) throw new Error("Adresse introuvable : " + address);
+    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+}
+
+async function getRoute(points) {
+    const coordinates = points.map(p => p.lon + "," + p.lat).join(";");
+    const url = "https://router.project-osrm.org/route/v1/driving/" + coordinates + "?overview=full&geometries=geojson";
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!data.routes || data.routes.length === 0) throw new Error("Impossible de calculer cet itinéraire.");
+    return data.routes[0];
+}
+
+function drawRoute(route, startPoint, endPoint, isSafeRoute) {
+    clearRoute();
+    const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    routeLine = L.polyline(latLngs, {
+        color: isSafeRoute ? "#7b61c9" : "#bd5c93",
+        weight: 6,
+        opacity: 0.85
+    }).addTo(map);
+
+    const startMarker = L.marker([startPoint.lat, startPoint.lon]).addTo(map);
+    const endMarker = L.marker([endPoint.lat, endPoint.lon]).addTo(map);
+    routeMarkers.push(startMarker, endMarker);
+    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+}
+
+function clearRoute() {
+    if (routeLine !== null) { map.removeLayer(routeLine); routeLine = null; }
+    routeMarkers.forEach(marker => map.removeLayer(marker));
+    routeMarkers = [];
+}
+
+function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+    const earthRadius = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return earthRadius * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function findDangerousZonesOnRoute(route) {
+    const dangerousZones = zones.filter(z => z.risk === "high" || z.risk === "medium");
+    const routeCoordinates = route.geometry.coordinates;
+    const touchedZones = [];
+
+    dangerousZones.forEach(function(zone) {
+        let touchesZone = false;
+        for (let i = 0; i < routeCoordinates.length; i++) {
+            if (calculateDistanceMeters(routeCoordinates[i][1], routeCoordinates[i][0], zone.coordinates[0], zone.coordinates[1]) <= zone.radius + 120) {
+                touchesZone = true;
+                break;
+            }
+        }
+        if (touchesZone) touchedZones.push(zone);
+    });
+    return touchedZones;
+}
+
+function createDetourPoint(startPoint, endPoint, zone) {
+    const offsetMeters = zone.radius + 700;
+    let perpendicularX = -(endPoint.lat - startPoint.lat);
+    let perpendicularY = endPoint.lon - startPoint.lon;
+    const length = Math.sqrt(perpendicularX * perpendicularX + perpendicularY * perpendicularY);
+    
+    perpendicularX = length === 0 ? 1 : perpendicularX / length;
+    perpendicularY = length === 0 ? 0 : perpendicularY / length;
+
+    return {
+        lat: zone.coordinates[0] + (perpendicularY * offsetMeters) / 111320,
+        lon: zone.coordinates[1] + (perpendicularX * offsetMeters) / (111320 * Math.cos(zone.coordinates[0] * Math.PI / 180))
+    };
+}
+
+function formatDistance(meters) { return meters < 1000 ? Math.round(meters) + " m" : (meters / 1000).toFixed(1) + " km"; }
+function formatDuration(seconds) { const min = Math.round(seconds / 60); return min < 60 ? min + " min" : Math.floor(min / 60) + " h " + (min % 60) + " min"; }
+
+function updateRouteResult(message, type) {
+    const result = document.getElementById("routeResult");
+    if (!result) return;
+    result.innerHTML = message;
+    result.className = "route-result " + (type || "");
+}
+
+async function handleNormalRoute(event) {
+    event.preventDefault();
+    const startValue = document.getElementById("startInput").value.trim();
+    const endValue = document.getElementById("endInput").value.trim();
+    if (!startValue || !endValue) return;
+
+    try {
+        updateRouteResult("Calcul de l’itinéraire...", "loading");
+        const startPoint = await geocodeAddress(startValue);
+        const endPoint = await geocodeAddress(endValue);
+        const route = await getRoute([startPoint, endPoint]);
+        drawRoute(route, startPoint, endPoint, false);
+
+        const dangerousZones = findDangerousZonesOnRoute(route);
+        if (dangerousZones.length === 0) {
+            updateRouteResult(`<strong>Itinéraire vérifié.</strong><br>Distance : ${formatDistance(route.distance)}<br>Durée : ${formatDuration(route.duration)}<br>Aucune zone à risque détectée.`, "safe");
+        } else {
+            updateRouteResult(`<strong>Attention, zones à risque détectées :</strong> ${dangerousZones.map(z => z.name).join(", ")}.<br>Distance : ${formatDistance(route.distance)}<br>Cliquez sur "Éviter les zones à risque".`, "warning");
+        }
+    } catch (error) { updateRouteResult(error.message, "warning"); }
+}
+
+async function handleSafeRoute() {
+    const startValue = document.getElementById("startInput").value.trim();
+    const endValue = document.getElementById("endInput").value.trim();
+    if (!startValue || !endValue) return;
+
+    try {
+        updateRouteResult("Recherche d’un itinéraire sécurisé...", "loading");
+        const startPoint = await geocodeAddress(startValue);
+        const endPoint = await geocodeAddress(endValue);
+        const firstRoute = await getRoute([startPoint, endPoint]);
+        const dangerousZones = findDangerousZonesOnRoute(firstRoute);
+
+        if (dangerousZones.length === 0) {
+            drawRoute(firstRoute, startPoint, endPoint, true);
+            updateRouteResult("L'itinéraire initial évite déjà les zones à risques.", "safe");
+            return;
+        }
+
+        const detourPoint = createDetourPoint(startPoint, endPoint, dangerousZones[0]);
+        const safeRoute = await getRoute([startPoint, detourPoint, endPoint]);
+        drawRoute(safeRoute, startPoint, endPoint, true);
+        updateRouteResult(`<strong>Itinéraire sécurisé alternatif généré.</strong><br>Distance : ${formatDistance(safeRoute.distance)}<br>Durée : ${formatDuration(safeRoute.duration)}`, "safe");
+    } catch (error) { updateRouteResult(error.message, "warning"); }
+}
+
+function setupRoutePlanner() {
+    const routeForm = document.getElementById("routeForm");
+    const safeRouteButton = document.getElementById("safeRouteButton");
+    const clearRouteButton = document.getElementById("clearRouteButton");
+
+    if (routeForm) routeForm.addEventListener("submit", handleNormalRoute);
+    if (safeRouteButton) safeRouteButton.addEventListener("click", handleSafeRoute);
+    if (clearRouteButton) {
+        clearRouteButton.addEventListener("click", function() {
+            clearRoute();
+            document.getElementById("startInput").value = "";
+            document.getElementById("endInput").value = "";
+            updateRouteResult("Aucun itinéraire vérifié pour le moment.");
+        });
+    }
+}
+
 function initHome() {
-    updateStreetLegend();
     setupFilters();
     setupMapControls();
     setupModal();
     setupOtherButtons();
+    setupRoutePlanner();
 
-    // Lancer la récupération des données de la BDD et le rendu
     fetchZones();
-
-    // Afficher les données statiques (rues) de Tat en attendant la BDD
-    renderMapZones();
-    renderZonesList();
-
-    if (typeof streetAlerts !== "undefined" && streetAlerts.length > 0) {
-        updatePanelFromStreet(streetAlerts[0]);
-    }
+    fetchAlerts();
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    initHome();
-});
+document.addEventListener("DOMContentLoaded", initHome);

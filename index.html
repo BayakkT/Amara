@@ -21,7 +21,7 @@
     </div>
 
     <nav class="site-links">
-      <button id="openAlertModal" style="background-color: #bd5c93; color: white; border: none; padding: 11px 18px; border-radius: 22px; font-weight: bold; cursor: pointer;">Ajouter une alerte</button>
+      <button id="openAlertModalNavbar" style="background-color: #bd5c93; color: white; border: none; padding: 11px 18px; border-radius: 22px; font-weight: bold; cursor: pointer; margin-right: 10px;">Ajouter une alerte</button>
       <a href="index.html">Carte</a>
       <a href="#routePlanner">Itinéraire</a>
       <a href="Conseils/conseil.html">Conseils de sécurité</a>
@@ -171,14 +171,14 @@
         <p class="district" id="panelDistrict">Paris</p>
         <p class="description" id="panelDescription"></p>
         <div id="panelAdvice" class="advice-list"></div>
+        <button class="alert-button" id="openAlertModalSide" type="button">Ajouter une alerte</button>
       </section>
-    </aside>
-  </main>
+    </main>
 
-  <div class="zones-list-section zones-list-section-hidden" aria-hidden="true">
-    <button class="show-list-btn" id="showAllZones" type="button">Afficher toutes</button>
-    <div class="zones-list" id="zonesList"></div>
-  </div>
+    <div class="zones-list-section zones-list-section-hidden" aria-hidden="true">
+      <button class="show-list-btn" id="showAllZones" type="button">Afficher toutes</button>
+      <div class="zones-list" id="zonesList"></div>
+    </div>
 
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
@@ -193,13 +193,17 @@
         <input type="text" id="street" placeholder="Ex : Rue de Rivoli" required>
 
         <label for="time">Heure de l’incident</label>
-        <input type="time" id="time" required>
+        <div style="display: flex; gap: 10px; width: 100%;">
+          <input type="time" id="time" required style="flex: 1;">
+          <button type="button" id="btnNow" style="padding: 0 15px; background-color: #ead0e2; color: #2d0f28; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; white-space: nowrap;">Maintenant</button>
+        </div>
 
         <label for="riskLevel">Niveau de risque</label>
         <select id="riskLevel" required>
           <option value="">Choisir un niveau</option>
           <option value="high">Risque élevé</option>
           <option value="medium">À surveiller</option>
+          <option value="safe">Sûr</option>
         </select>
 
         <label for="message">Description courte</label>

@@ -1,7 +1,11 @@
 let zones = [];
 let currentRisk = "all";
 let circles = [];
-let streetLayers = [];
+let alertMarkers = [];
+let routeLine = null;
+let routeMarkers = [];
+let lastStartPoint = null;
+let lastEndPoint = null;
 
 const map = L.map("map", {
     zoomControl: false
@@ -26,34 +30,43 @@ const riskColors = {
     }
 };
 
-const streetRiskColors = {
-    high: {
-        glow: "#8b2be2",
-        line: "#6d28d9"
-    },
-    medium: {
-        glow: "#d946ef",
-        line: "#a855f7"
-    }
-};
-
-const streetGeometryById = new Map();
-
-if (typeof streetGeometries !== "undefined") {
-    streetGeometries.forEach(function(item) {
-        streetGeometryById.set(item.id, item.geometry);
-    });
-}
-
-// Récupération des zones depuis MySQL via PHP
+// Charger les zones polygonales/circulaires depuis PHP
 async function fetchZones() {
     try {
         const response = await fetch('get_zones.php');
         zones = await response.json();
-        
         renderMapZones();
         renderZonesList();
     } catch (error) {
         console.error("Erreur lors de la récupération des zones :", error);
+    }
+}
+
+// Charger et afficher dynamiquement les points d'alertes (BDD + PDF importé)
+async function fetchAlerts() {
+    try {
+        const response = await fetch('get_alerts.php');
+        const alerts = await response.json();
+        
+        // Nettoyer les anciens marqueurs présents
+        alertMarkers.forEach(marker => map.removeLayer(marker));
+        alertMarkers = [];
+
+        alerts.forEach(alert => {
+            if (!alert.latitude || !alert.longitude) return;
+
+            // Création d'un point personnalisé avec ombre et bordure blanche
+            const alertIcon = L.divIcon({
+                className: 'custom-alert-icon',
+                html: `<div style="background-color: #d93c8a; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6);"></div>`,
+                iconSize: [14, 14]
+            });
+
+            const marker = L.marker([parseFloat(alert.latitude), parseFloat(alert.longitude)], {icon: alertIcon}).addTo(map);
+            marker.bindPopup(`<strong>📍 Signalement : ${alert.street}</strong><br>Heure : ${alert.incident_time}<br><em>${alert.description}</em>`);
+            alertMarkers.push(marker);
+        });
+    } catch (error) {
+        console.error("Erreur de chargement des alertes :", error);
     }
 }
