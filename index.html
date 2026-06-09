@@ -21,6 +21,7 @@
     </div>
 
     <nav class="site-links">
+      <button id="openAlertModal" style="background-color: #bd5c93; color: white; border: none; padding: 11px 18px; border-radius: 22px; font-weight: bold; cursor: pointer;">Ajouter une alerte</button>
       <a href="index.html">Carte</a>
       <a href="#routePlanner">Itinéraire</a>
       <a href="Conseils/conseil.html">Conseils de sécurité</a>
@@ -163,7 +164,6 @@
         </div>
       </section>
 
-      <!-- Hidden elements kept only so the existing map/street scripts do not crash. -->
       <section class="street-details-panel removed-street-panel" aria-hidden="true">
         <button class="close-panel" id="closePanel" type="button">×</button>
         <span class="risk-badge" id="panelRisk">À surveiller</span>
@@ -171,13 +171,10 @@
         <p class="district" id="panelDistrict">Paris</p>
         <p class="description" id="panelDescription"></p>
         <div id="panelAdvice" class="advice-list"></div>
-        <button class="alert-button" id="openAlertModal" type="button">Ajouter une alerte</button>
       </section>
     </aside>
   </main>
 
-  <!-- Hidden compatibility container for existing scripts.
-       The visible “Rues signalées” list has been removed so the page stays focused on the map. -->
   <div class="zones-list-section zones-list-section-hidden" aria-hidden="true">
     <button class="show-list-btn" id="showAllZones" type="button">Afficher toutes</button>
     <div class="zones-list" id="zonesList"></div>

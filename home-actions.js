@@ -17,7 +17,6 @@ function clearMapLayers() {
         circles.forEach(function(circle) {
             map.removeLayer(circle);
         });
-
         circles = [];
     }
 
@@ -25,7 +24,6 @@ function clearMapLayers() {
         streetLayers.forEach(function(layer) {
             map.removeLayer(layer);
         });
-
         streetLayers = [];
     }
 }
@@ -35,7 +33,6 @@ function createStreetPopup(street) {
 
     if (street.articles && street.articles.length > 0) {
         const firstArticle = street.articles[0];
-
         articleHtml =
             "<br><br>" +
             "<strong>Source :</strong> " + firstArticle.source + "<br>" +
@@ -60,28 +57,42 @@ function getStreetGeometryById(streetId) {
         return item.id === streetId;
     });
 
-    if (!foundStreet) {
-        return null;
-    }
-
-    return foundStreet.geometry;
+    return !foundStreet ? null : foundStreet.geometry;
 }
 
 function renderMapZones() {
     clearMapLayers();
 
-    if (typeof streetAlerts === "undefined") {
-        console.log("streetAlerts is not loaded");
-        return;
-    }
+    // 1. Affichage des Cercles (Base de données MySQL)
+    const filteredZones = currentRisk === "all" ? zones : zones.filter(function(z) { return z.risk === currentRisk; });
+    
+    filteredZones.forEach(function(zone) {
+        const color = riskColors[zone.risk];
 
-    if (typeof streetGeometries === "undefined") {
-        console.log("streetGeometries is not loaded");
-        return;
-    }
+        const circle = L.circle(zone.coordinates, {
+            color: color.border,
+            fillColor: color.fill,
+            fillOpacity: 0.22,
+            weight: 3,
+            radius: zone.radius
+        }).addTo(map);
 
-    if (typeof streetRiskColors === "undefined") {
-        console.log("streetRiskColors is not loaded");
+        circle.bindPopup(
+            "<strong>" + zone.name + "</strong><br>" +
+            zone.district + "<br>" +
+            zone.riskLabel
+        );
+
+        circle.on("click", function() {
+            updatePanelFromZone(zone);
+            openSidePanel();
+        });
+
+        circles.push(circle);
+    });
+
+    // 2. Affichage des Rues (Données de Tat)
+    if (typeof streetAlerts === "undefined" || typeof streetGeometries === "undefined" || typeof streetRiskColors === "undefined") {
         return;
     }
 
@@ -90,17 +101,10 @@ function renderMapZones() {
     filteredStreets.forEach(function(street) {
         const geometry = getStreetGeometryById(street.id);
 
-        if (!geometry) {
-            console.log("No geometry found for:", street.id, street.street);
-            return;
-        }
+        if (!geometry) return;
 
         const colors = streetRiskColors[street.risk];
-
-        if (!colors) {
-            console.log("No color found for:", street.risk);
-            return;
-        }
+        if (!colors) return;
 
         const glowLayer = L.polyline(geometry, {
             color: colors.glow,
@@ -128,24 +132,45 @@ function renderMapZones() {
 
 function renderZonesList() {
     const list = document.getElementById("zonesList");
-
-    if (!list) {
-        return;
-    }
+    if (!list) return;
 
     list.innerHTML = "";
 
+    // Afficher la liste des cercles (MySQL)
+    const filteredZones = currentRisk === "all" ? zones : zones.filter(function(z) { return z.risk === currentRisk; });
+    
+    filteredZones.forEach(function(zone) {
+        const card = document.createElement("div");
+        card.className = "zone-card";
+
+        card.innerHTML = `
+            <div>
+                <div class="zone-card-title">
+                    <span class="zone-card-dot ${zone.risk}"></span>
+                    <span>${zone.name}</span>
+                </div>
+                <p>${zone.district}</p>
+            </div>
+            <span class="card-risk ${zone.risk}">${zone.riskLabel}</span>
+        `;
+
+        card.addEventListener("click", function() {
+            updatePanelFromZone(zone);
+            openSidePanel();
+            map.setView(zone.coordinates, 14);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        list.appendChild(card);
+    });
+
+    // Afficher la liste des rues (Tat)
     const filteredStreets = getFilteredStreets();
 
     filteredStreets.forEach(function(street) {
         const card = document.createElement("div");
         card.className = "zone-card";
-
-        let dotClass = "medium";
-
-        if (street.risk === "high") {
-            dotClass = "high";
-        }
+        let dotClass = street.risk === "high" ? "high" : "medium";
 
         card.innerHTML = `
             <div>
@@ -155,7 +180,6 @@ function renderZonesList() {
                 </div>
                 <p>${street.commune} · ${street.dept}</p>
             </div>
-
             <span class="card-risk ${street.risk}">
                 ${street.riskLabel}
             </span>
@@ -166,19 +190,40 @@ function renderZonesList() {
             openSidePanel();
 
             const geometry = getStreetGeometryById(street.id);
-
             if (geometry && geometry.length > 0) {
                 map.setView(geometry[0], 15);
             }
 
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
+            window.scrollTo({ top: 0, behavior: "smooth" });
         });
 
         list.appendChild(card);
     });
+}
+
+// Fonction pour mettre à jour le panneau latéral pour une zone circulaire (MySQL)
+function updatePanelFromZone(zone) {
+    const panelTitle = document.getElementById("panelTitle");
+    const panelDistrict = document.getElementById("panelDistrict");
+    const panelRisk = document.getElementById("panelRisk");
+    const panelDescription = document.getElementById("panelDescription");
+    const adviceContainer = document.getElementById("panelAdvice");
+
+    if (!panelTitle) return;
+
+    panelTitle.textContent = zone.name;
+    panelDistrict.textContent = zone.district;
+    panelRisk.textContent = zone.riskLabel;
+    panelDescription.textContent = zone.description;
+    
+    adviceContainer.innerHTML = "";
+    if(zone.advice && Array.isArray(zone.advice)) {
+        zone.advice.forEach(function(item) {
+            const paragraph = document.createElement("p");
+            paragraph.textContent = "◆ " + item;
+            adviceContainer.appendChild(paragraph);
+        });
+    }
 }
 
 function updatePanelFromStreet(street) {
@@ -188,24 +233,19 @@ function updatePanelFromStreet(street) {
     const panelDescription = document.getElementById("panelDescription");
     const adviceContainer = document.getElementById("panelAdvice");
 
-    if (!panelTitle || !panelDistrict || !panelRisk || !panelDescription || !adviceContainer) {
-        return;
-    }
+    if (!panelTitle) return;
 
     panelTitle.textContent = street.street;
     panelDistrict.textContent = street.commune + " · " + street.dept;
     panelRisk.textContent = street.riskLabel;
 
     let description = "Rue signalée sur la carte Amara.";
-
     if (street.articles && street.articles.length > 0) {
         description = street.articles[0].summary;
     }
-
     panelDescription.textContent = description;
 
     adviceContainer.innerHTML = "";
-
     const advice = [
         "Restez sur les axes principaux et bien éclairés.",
         "Évitez de rester seule longtemps dans cette rue, surtout tard le soir.",
@@ -220,36 +260,21 @@ function updatePanelFromStreet(street) {
 }
 
 function formatStreetCount(count) {
-    if (count <= 1) {
-        return count + " rue";
-    }
-
+    if (count <= 1) return count + " rue";
     return count + " rues";
 }
 
 function updateStreetLegend() {
-    if (typeof streetAlerts === "undefined") {
-        return;
-    }
+    if (typeof streetAlerts === "undefined") return;
 
-    const highCount = streetAlerts.filter(function(street) {
-        return street.risk === "high";
-    }).length;
-
-    const mediumCount = streetAlerts.filter(function(street) {
-        return street.risk === "medium";
-    }).length;
+    const highCount = streetAlerts.filter(function(street) { return street.risk === "high"; }).length;
+    const mediumCount = streetAlerts.filter(function(street) { return street.risk === "medium"; }).length;
 
     const highElement = document.getElementById("highStreetCount");
     const mediumElement = document.getElementById("mediumStreetCount");
 
-    if (highElement) {
-        highElement.textContent = formatStreetCount(highCount);
-    }
-
-    if (mediumElement) {
-        mediumElement.textContent = formatStreetCount(mediumCount);
-    }
+    if (highElement) highElement.textContent = formatStreetCount(highCount);
+    if (mediumElement) mediumElement.textContent = formatStreetCount(mediumCount);
 }
 
 function setupFilters() {
@@ -275,23 +300,9 @@ function setupMapControls() {
     const zoomOut = document.getElementById("zoomOut");
     const resetMap = document.getElementById("resetMap");
 
-    if (zoomIn) {
-        zoomIn.addEventListener("click", function() {
-            map.zoomIn();
-        });
-    }
-
-    if (zoomOut) {
-        zoomOut.addEventListener("click", function() {
-            map.zoomOut();
-        });
-    }
-
-    if (resetMap) {
-        resetMap.addEventListener("click", function() {
-            map.setView([48.8625, 2.35], 13);
-        });
-    }
+    if (zoomIn) zoomIn.addEventListener("click", function() { map.zoomIn(); });
+    if (zoomOut) zoomOut.addEventListener("click", function() { map.zoomOut(); });
+    if (resetMap) resetMap.addEventListener("click", function() { map.setView([48.8625, 2.35], 13); });
 }
 
 function setupModal() {
@@ -302,15 +313,11 @@ function setupModal() {
     const toast = document.getElementById("toast");
 
     if (openButton && modalOverlay) {
-        openButton.addEventListener("click", function() {
-            modalOverlay.classList.add("active");
-        });
+        openButton.addEventListener("click", function() { modalOverlay.classList.add("active"); });
     }
 
     if (closeButton && modalOverlay) {
-        closeButton.addEventListener("click", function() {
-            modalOverlay.classList.remove("active");
-        });
+        closeButton.addEventListener("click", function() { modalOverlay.classList.remove("active"); });
     }
 
     if (modalOverlay) {
@@ -321,22 +328,42 @@ function setupModal() {
         });
     }
 
+    // Gestion de l'ajout d'alerte en PHP
     if (form) {
-        form.addEventListener("submit", function(event) {
+        form.addEventListener("submit", async function(event) {
             event.preventDefault();
 
-            if (modalOverlay) {
-                modalOverlay.classList.remove("active");
-            }
+            const alertData = {
+                street: document.getElementById("street").value,
+                time: document.getElementById("time").value,
+                riskLevel: document.getElementById("riskLevel").value,
+                message: document.getElementById("message").value
+            };
 
-            form.reset();
+            try {
+                const response = await fetch('add_alert.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(alertData)
+                });
 
-            if (toast) {
-                toast.classList.add("active");
+                const result = await response.json();
 
-                setTimeout(function() {
-                    toast.classList.remove("active");
-                }, 2500);
+                if (result.success) {
+                    if (modalOverlay) modalOverlay.classList.remove("active");
+                    form.reset();
+
+                    if (toast) {
+                        toast.textContent = result.message; 
+                        toast.classList.add("active");
+                        setTimeout(function() { toast.classList.remove("active"); }, 2500);
+                    }
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error("Erreur lors de l'envoi de l'alerte :", error);
+                alert("Une erreur s'est produite lors de l'envoi de l'alerte.");
             }
         });
     }
@@ -344,36 +371,26 @@ function setupModal() {
 
 function openSidePanel() {
     const panel = document.getElementById("sidePanel");
-
-    if (panel) {
-        panel.style.display = "block";
-    }
+    if (panel) panel.style.display = "block";
 }
 
 function setupOtherButtons() {
     const closePanel = document.getElementById("closePanel");
-
     if (closePanel) {
         closePanel.addEventListener("click", function() {
             const panel = document.getElementById("sidePanel");
-
-            if (panel) {
-                panel.style.display = "none";
-            }
+            if (panel) panel.style.display = "none";
         });
     }
 
     const showAllButton = document.getElementById("showAllZones");
-
     if (showAllButton) {
         showAllButton.addEventListener("click", function() {
             currentRisk = "all";
-
             const buttons = document.querySelectorAll(".filter-btn");
 
             buttons.forEach(function(button) {
                 button.classList.remove("active");
-
                 if (button.dataset.risk === "all") {
                     button.classList.add("active");
                 }
@@ -387,12 +404,15 @@ function setupOtherButtons() {
 
 function initHome() {
     updateStreetLegend();
-
     setupFilters();
     setupMapControls();
     setupModal();
     setupOtherButtons();
 
+    // Lancer la récupération des données de la BDD et le rendu
+    fetchZones();
+
+    // Afficher les données statiques (rues) de Tat en attendant la BDD
     renderMapZones();
     renderZonesList();
 
