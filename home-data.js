@@ -1,11 +1,9 @@
 let zones = [];
 let currentRisk = "all";
 let circles = [];
+let streetLayers = []; 
 let alertMarkers = [];
-let routeLine = null;
-let routeMarkers = [];
-let lastStartPoint = null;
-let lastEndPoint = null;
+let dynamicAlerts = []; 
 
 const map = L.map("map", {
     zoomControl: false
@@ -15,22 +13,32 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors"
 }).addTo(map);
 
+// Couleurs de la carte initiales (Rose et Vrai Violet)
 const riskColors = {
+    high: { border: "#d93c8a", fill: "#d93c8a" },     // Rose / Magenta
+    medium: { border: "#6b21a8", fill: "#6b21a8" },   // Vrai Violet Foncé
+    safe: { border: "#4f46e5", fill: "#4f46e5" }      
+};
+
+const streetRiskColors = {
     high: {
-        border: "#d93c8a",
-        fill: "#d93c8a"
+        glow: "#f472b6", 
+        line: "#d93c8a"  
     },
     medium: {
-        border: "#9f5488",
-        fill: "#9f5488"
-    },
-    safe: {
-        border: "#7b61c9",
-        fill: "#7b61c9"
+        glow: "#d8b4fe", 
+        line: "#6b21a8"  
     }
 };
 
-// Charger les zones polygonales/circulaires depuis PHP
+const streetGeometryById = new Map();
+
+if (typeof streetGeometries !== "undefined") {
+    streetGeometries.forEach(function(item) {
+        streetGeometryById.set(item.id, item.geometry);
+    });
+}
+
 async function fetchZones() {
     try {
         const response = await fetch('get_zones.php');
@@ -42,30 +50,17 @@ async function fetchZones() {
     }
 }
 
-// Charger et afficher dynamiquement les points d'alertes (BDD + PDF importé)
 async function fetchAlerts() {
     try {
         const response = await fetch('get_alerts.php');
-        const alerts = await response.json();
+        dynamicAlerts = await response.json(); 
         
-        // Nettoyer les anciens marqueurs présents
-        alertMarkers.forEach(marker => map.removeLayer(marker));
-        alertMarkers = [];
-
-        alerts.forEach(alert => {
-            if (!alert.latitude || !alert.longitude) return;
-
-            // Création d'un point personnalisé avec ombre et bordure blanche
-            const alertIcon = L.divIcon({
-                className: 'custom-alert-icon',
-                html: `<div style="background-color: #d93c8a; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6);"></div>`,
-                iconSize: [14, 14]
-            });
-
-            const marker = L.marker([parseFloat(alert.latitude), parseFloat(alert.longitude)], {icon: alertIcon}).addTo(map);
-            marker.bindPopup(`<strong>📍 Signalement : ${alert.street}</strong><br>Heure : ${alert.incident_time}<br><em>${alert.description}</em>`);
-            alertMarkers.push(marker);
-        });
+        renderMapZones();
+        renderZonesList();
+        
+        if (typeof updateStreetLegend === "function") {
+            updateStreetLegend();
+        }
     } catch (error) {
         console.error("Erreur de chargement des alertes :", error);
     }

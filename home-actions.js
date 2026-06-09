@@ -1,44 +1,137 @@
-function getFilteredZones() {
-    if (currentRisk === "all") {
-        return zones;
+function getFilteredStreets() {
+    if (typeof streetAlerts === "undefined") {
+        return [];
     }
-    return zones.filter(function(zone) {
-        return zone.risk === currentRisk;
+    if (currentRisk === "all") {
+        return streetAlerts;
+    }
+    return streetAlerts.filter(function(street) {
+        return street.risk === currentRisk;
     });
 }
 
+function clearMapLayers() {
+    if (typeof circles !== "undefined" && Array.isArray(circles)) {
+        circles.forEach(circle => map.removeLayer(circle));
+        circles = [];
+    }
+    if (typeof streetLayers !== "undefined" && Array.isArray(streetLayers)) {
+        streetLayers.forEach(layer => map.removeLayer(layer));
+        streetLayers = [];
+    }
+    if (typeof alertMarkers !== "undefined" && Array.isArray(alertMarkers)) {
+        alertMarkers.forEach(marker => map.removeLayer(marker));
+        alertMarkers = [];
+    }
+}
+
+function createStreetPopup(street) {
+    let articleHtml = "";
+    if (street.articles && street.articles.length > 0) {
+        const firstArticle = street.articles[0];
+        articleHtml =
+            "<br><br>" +
+            "<strong>Source :</strong> " + firstArticle.source + "<br>" +
+            "<strong>Date :</strong> " + firstArticle.date + "<br>" +
+            "<a href='" + firstArticle.url + "' target='_blank'>Voir l'article</a>";
+    }
+    return (
+        "<strong>" + street.street + "</strong><br>" +
+        street.commune + " · " + street.dept + "<br>" +
+        street.riskLabel +
+        articleHtml
+    );
+}
+
+function getStreetGeometryById(streetId) {
+    if (typeof streetGeometries === "undefined") {
+        return null;
+    }
+    const foundStreet = streetGeometries.find(item => item.id === streetId);
+    return !foundStreet ? null : foundStreet.geometry;
+}
+
 function renderMapZones() {
-    circles.forEach(function(circle) {
-        map.removeLayer(circle);
-    });
-    circles = [];
+    clearMapLayers();
 
-    const filteredZones = getFilteredZones();
+    // 1. Rendu sécurisé des cercles BDD
+    if (typeof zones !== "undefined" && Array.isArray(zones)) {
+        const filteredZones = currentRisk === "all" ? zones : zones.filter(z => (z.risk || z.risk_level) === currentRisk);
+        filteredZones.forEach(function(zone) {
+            try {
+                const riskType = zone.risk || zone.risk_level || "medium";
+                const color = riskColors[riskType] || riskColors["medium"];
+                
+                let coords = zone.coordinates;
+                if (typeof coords === "string") coords = JSON.parse(coords);
+                else if (zone.latitude && zone.longitude) coords = [parseFloat(zone.latitude), parseFloat(zone.longitude)];
+                
+                if (!coords || !Array.isArray(coords)) return;
 
-    filteredZones.forEach(function(zone) {
-        const color = riskColors[zone.risk];
+                const circle = L.circle(coords, {
+                    color: color.border,
+                    fillColor: color.fill,
+                    fillOpacity: 0.22,
+                    weight: 3,
+                    radius: zone.radius ? parseInt(zone.radius) : 350
+                }).addTo(map);
 
-        const circle = L.circle(zone.coordinates, {
-            color: color.border,
-            fillColor: color.fill,
-            fillOpacity: 0.22,
-            weight: 3,
-            radius: zone.radius
-        }).addTo(map);
-
-        circle.bindPopup(
-            "<strong>" + zone.name + "</strong><br>" +
-            zone.district + "<br>" +
-            zone.riskLabel
-        );
-
-        circle.on("click", function() {
-            updatePanel(zone);
-            openSidePanel();
+                const name = zone.name || zone.street || "Zone signalée";
+                circle.bindPopup("<strong>" + name + "</strong><br>" + (zone.district || zone.commune || ""));
+                circles.push(circle);
+            } catch(e) { console.error("Erreur rendu zone:", e); }
         });
+    }
 
-        circles.push(circle);
-    });
+    // 2. Rendu des rues statiques (Tat)
+    if (typeof streetAlerts !== "undefined" && typeof streetGeometries !== "undefined" && typeof streetRiskColors !== "undefined") {
+        const filteredStreets = getFilteredStreets();
+        filteredStreets.forEach(function(street) {
+            try {
+                const geometry = getStreetGeometryById(street.id);
+                if (!geometry) return;
+
+                const colors = streetRiskColors[street.risk];
+                if (!colors) return;
+
+                const glowLayer = L.polyline(geometry, {
+                    color: colors.glow, weight: 20, opacity: 0.25, lineCap: "round", lineJoin: "round", interactive: false
+                }).addTo(map);
+
+                const lineLayer = L.polyline(geometry, {
+                    color: colors.line, weight: 7, opacity: 0.9, lineCap: "round", lineJoin: "round"
+                }).addTo(map);
+
+                lineLayer.bindPopup(createStreetPopup(street));
+                streetLayers.push(glowLayer, lineLayer);
+            } catch(e) { console.error("Erreur rendu rue:", e); }
+        });
+    }
+
+    // 3. Rendu et filtrage dynamique des points d'alertes BDD avec couleur dynamique
+    if (typeof dynamicAlerts !== "undefined" && Array.isArray(dynamicAlerts)) {
+        const filteredAlerts = currentRisk === "all" ? dynamicAlerts : dynamicAlerts.filter(a => (a.risk_level || a.riskLevel || a.risk) === currentRisk);
+        
+        filteredAlerts.forEach(alert => {
+            try {
+                if (!alert.latitude || !alert.longitude) return;
+
+                // Détermination de la couleur dynamique correspondante au niveau de risque
+                const riskType = alert.risk_level || alert.riskLevel || alert.risk || "medium";
+                const markerColor = (riskColors[riskType] || riskColors["medium"]).fill;
+
+                const alertIcon = L.divIcon({
+                    className: 'custom-alert-icon',
+                    html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6);"></div>`,
+                    iconSize: [14, 14]
+                });
+
+                const marker = L.marker([parseFloat(alert.latitude), parseFloat(alert.longitude)], {icon: alertIcon}).addTo(map);
+                marker.bindPopup(`<strong>📍 Signalement : ${alert.street}</strong><br>Heure : ${alert.incident_time || '00:00'}<br><em>${alert.description || ''}</em>`);
+                alertMarkers.push(marker);
+            } catch(e) { console.error("Erreur rendu marqueur:", e); }
+        });
+    }
 }
 
 function renderZonesList() {
@@ -46,58 +139,45 @@ function renderZonesList() {
     if (!list) return;
     list.innerHTML = "";
 
-    const filteredZones = getFilteredZones();
-
-    filteredZones.forEach(function(zone) {
+    const filteredStreets = getFilteredStreets();
+    filteredStreets.forEach(function(street) {
         const card = document.createElement("div");
         card.className = "zone-card";
+        let dotClass = street.risk === "high" ? "high" : "medium";
 
         card.innerHTML = `
             <div>
                 <div class="zone-card-title">
-                    <span class="zone-card-dot ${zone.risk}"></span>
-                    <span>${zone.name}</span>
+                    <span class="zone-card-dot ${dotClass}"></span>
+                    ${street.street}
                 </div>
-                <p>${zone.district}</p>
+                <p>${street.commune} · ${street.dept}</p>
             </div>
-            <span class="card-risk ${zone.risk}">
-                ${zone.riskLabel}
-            </span>
+            <span class="card-risk ${street.risk}">${street.riskLabel}</span>
         `;
-
-        card.addEventListener("click", function() {
-            updatePanel(zone);
-            openSidePanel();
-            map.setView(zone.coordinates, 14);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-
         list.appendChild(card);
     });
 }
 
-function updatePanel(zone) {
-    const panelTitle = document.getElementById("panelTitle");
-    const panelDistrict = document.getElementById("panelDistrict");
-    const panelRisk = document.getElementById("panelRisk");
-    const panelDescription = document.getElementById("panelDescription");
-    const adviceContainer = document.getElementById("panelAdvice");
+function formatStreetCount(count) {
+    return count <= 1 ? count + " rue" : count + " rues";
+}
 
-    if (panelTitle) panelTitle.textContent = zone.name;
-    if (panelDistrict) panelDistrict.textContent = zone.district;
-    if (panelRisk) panelRisk.textContent = zone.riskLabel;
-    if (panelDescription) panelDescription.textContent = zone.description;
+function updateStreetLegend() {
+    let staticHigh = typeof streetAlerts !== "undefined" ? streetAlerts.filter(s => s.risk === "high").length : 0;
+    let staticMedium = typeof streetAlerts !== "undefined" ? streetAlerts.filter(s => s.risk === "medium").length : 0;
 
-    if (adviceContainer) {
-        adviceContainer.innerHTML = "";
-        if (zone.advice && Array.isArray(zone.advice)) {
-            zone.advice.forEach(function(item) {
-                const paragraph = document.createElement("p");
-                paragraph.textContent = "◆ " + item;
-                adviceContainer.appendChild(paragraph);
-            });
-        }
-    }
+    let dynamicHigh = typeof dynamicAlerts !== "undefined" && Array.isArray(dynamicAlerts) ? dynamicAlerts.filter(a => (a.risk_level || a.riskLevel || a.risk) === "high").length : 0;
+    let dynamicMedium = typeof dynamicAlerts !== "undefined" && Array.isArray(dynamicAlerts) ? dynamicAlerts.filter(a => (a.risk_level || a.riskLevel || a.risk) === "medium").length : 0;
+
+    const totalHigh = staticHigh + dynamicHigh;
+    const totalMedium = staticMedium + dynamicMedium;
+
+    const highElement = document.getElementById("highStreetCount");
+    const mediumElement = document.getElementById("mediumStreetCount");
+
+    if (highElement) highElement.textContent = formatStreetCount(totalHigh);
+    if (mediumElement) mediumElement.textContent = formatStreetCount(totalMedium);
 }
 
 function setupFilters() {
@@ -111,130 +191,6 @@ function setupFilters() {
             renderZonesList();
         });
     });
-}
-
-function setupMapControls() {
-    const zoomIn = document.getElementById("zoomIn");
-    const zoomOut = document.getElementById("zoomOut");
-    const resetMap = document.getElementById("resetMap");
-
-    if (zoomIn) zoomIn.addEventListener("click", () => map.zoomIn());
-    if (zoomOut) zoomOut.addEventListener("click", () => map.zoomOut());
-    if (resetMap) resetMap.addEventListener("click", () => map.setView([48.8625, 2.35], 13));
-}
-
-function openSidePanel() {
-    const panel = document.getElementById("sidePanel");
-    if (panel) panel.style.display = "block";
-}
-
-function setupModal() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const openNavbar = document.getElementById("openAlertModalNavbar");
-    const openSide = document.getElementById("openAlertModalSide");
-    const closeButton = document.getElementById("closeModal");
-    const form = document.getElementById("alertForm");
-    const toast = document.getElementById("toast");
-    const btnNow = document.getElementById("btnNow");
-
-    // Bouton Heure actuelle "Maintenant"
-    if (btnNow) {
-        btnNow.addEventListener("click", function() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById("time").value = `${hours}:${minutes}`;
-        });
-    }
-
-    if (openNavbar) openNavbar.addEventListener("click", () => modalOverlay.classList.add("active"));
-    if (openSide) openSide.addEventListener("click", () => modalOverlay.classList.add("active"));
-    if (closeButton) closeButton.addEventListener("click", () => modalOverlay.classList.remove("active"));
-
-    if (modalOverlay) {
-        modalOverlay.addEventListener("click", function(event) {
-            if (event.target === modalOverlay) modalOverlay.classList.remove("active");
-        });
-    }
-
-    if (form) {
-        form.addEventListener("submit", async function(event) {
-            event.preventDefault();
-            const streetValue = document.getElementById("street").value.trim();
-
-            let lat = null, lon = null;
-            try {
-                // Requête de géocodage vers Nominatim OpenStreetMap limitée à la région Île-de-France
-                const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(streetValue + ", Ile-de-France, France");
-                const res = await fetch(url);
-                const geoData = await res.json();
-                if (geoData.length > 0) {
-                    lat = parseFloat(geoData[0].lat);
-                    lon = parseFloat(geoData[0].lon);
-                }
-            } catch(e) {
-                console.error("Erreur géocodage :", e);
-            }
-
-            const alertData = {
-                street: streetValue,
-                time: document.getElementById("time").value,
-                riskLevel: document.getElementById("riskLevel").value,
-                message: document.getElementById("message").value,
-                latitude: lat,
-                longitude: lon
-            };
-
-            try {
-                const response = await fetch('add_alert.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(alertData)
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    modalOverlay.classList.remove("active");
-                    form.reset();
-                    if (toast) {
-                        toast.textContent = result.message;
-                        toast.classList.add("active");
-                        setTimeout(() => toast.classList.remove("active"), 2500);
-                    }
-                    // Met à jour instantanément la carte avec la nouvelle alerte positionnée
-                    fetchAlerts();
-                } else {
-                    alert(result.message);
-                }
-            } catch (error) {
-                alert("Erreur lors de l'envoi de la demande.");
-            }
-        });
-    }
-}
-
-function setupOtherButtons() {
-    const closePanel = document.getElementById("closePanel");
-    if (closePanel) {
-        closePanel.addEventListener("click", function() {
-            const panel = document.getElementById("sidePanel");
-            if (panel) panel.style.display = "none";
-        });
-    }
-
-    const showAllZones = document.getElementById("showAllZones");
-    if (showAllZones) {
-        showAllZones.addEventListener("click", function() {
-            currentRisk = "all";
-            const buttons = document.querySelectorAll(".filter-btn");
-            buttons.forEach(function(button) {
-                button.classList.remove("active");
-                if (button.dataset.risk === "all") button.classList.add("active");
-            });
-            renderMapZones();
-            renderZonesList();
-        });
-    }
 }
 
 // --- LOGIQUE DE CALCUL D'ITINÉRAIRE ---
@@ -271,9 +227,11 @@ function drawRoute(route, startPoint, endPoint, isSafeRoute) {
 }
 
 function clearRoute() {
-    if (routeLine !== null) { map.removeLayer(routeLine); routeLine = null; }
-    routeMarkers.forEach(marker => map.removeLayer(marker));
-    routeMarkers = [];
+    if (typeof routeLine !== "undefined" && routeLine !== null) { map.removeLayer(routeLine); routeLine = null; }
+    if (typeof routeMarkers !== "undefined") {
+        routeMarkers.forEach(marker => map.removeLayer(marker));
+        routeMarkers = [];
+    }
 }
 
 function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -285,14 +243,18 @@ function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
 }
 
 function findDangerousZonesOnRoute(route) {
-    const dangerousZones = zones.filter(z => z.risk === "high" || z.risk === "medium");
+    const dangerousZones = zones.filter(z => (z.risk || z.risk_level) === "high" || (z.risk || z.risk_level) === "medium");
     const routeCoordinates = route.geometry.coordinates;
     const touchedZones = [];
 
     dangerousZones.forEach(function(zone) {
         let touchesZone = false;
+        let zLat = zone.latitude ? parseFloat(zone.latitude) : zone.coordinates[0];
+        let zLon = zone.longitude ? parseFloat(zone.longitude) : zone.coordinates[1];
+        let zRadius = zone.radius ? parseInt(zone.radius) : 350;
+
         for (let i = 0; i < routeCoordinates.length; i++) {
-            if (calculateDistanceMeters(routeCoordinates[i][1], routeCoordinates[i][0], zone.coordinates[0], zone.coordinates[1]) <= zone.radius + 120) {
+            if (calculateDistanceMeters(routeCoordinates[i][1], routeCoordinates[i][0], zLat, zLon) <= zRadius + 120) {
                 touchesZone = true;
                 break;
             }
@@ -303,7 +265,11 @@ function findDangerousZonesOnRoute(route) {
 }
 
 function createDetourPoint(startPoint, endPoint, zone) {
-    const offsetMeters = zone.radius + 700;
+    let zLat = zone.latitude ? parseFloat(zone.latitude) : zone.coordinates[0];
+    let zLon = zone.longitude ? parseFloat(zone.longitude) : zone.coordinates[1];
+    let zRadius = zone.radius ? parseInt(zone.radius) : 350;
+
+    const offsetMeters = zRadius + 700;
     let perpendicularX = -(endPoint.lat - startPoint.lat);
     let perpendicularY = endPoint.lon - startPoint.lon;
     const length = Math.sqrt(perpendicularX * perpendicularX + perpendicularY * perpendicularY);
@@ -312,8 +278,8 @@ function createDetourPoint(startPoint, endPoint, zone) {
     perpendicularY = length === 0 ? 0 : perpendicularY / length;
 
     return {
-        lat: zone.coordinates[0] + (perpendicularY * offsetMeters) / 111320,
-        lon: zone.coordinates[1] + (perpendicularX * offsetMeters) / (111320 * Math.cos(zone.coordinates[0] * Math.PI / 180))
+        lat: zLat + (perpendicularY * offsetMeters) / 111320,
+        lon: zLon + (perpendicularX * offsetMeters) / (111320 * Math.cos(zLat * Math.PI / 180))
     };
 }
 
@@ -344,7 +310,8 @@ async function handleNormalRoute(event) {
         if (dangerousZones.length === 0) {
             updateRouteResult(`<strong>Itinéraire vérifié.</strong><br>Distance : ${formatDistance(route.distance)}<br>Durée : ${formatDuration(route.duration)}<br>Aucune zone à risque détectée.`, "safe");
         } else {
-            updateRouteResult(`<strong>Attention, zones à risque détectées :</strong> ${dangerousZones.map(z => z.name).join(", ")}.<br>Distance : ${formatDistance(route.distance)}<br>Cliquez sur "Éviter les zones à risque".`, "warning");
+            let names = dangerousZones.map(z => z.name || z.street || "Zone").join(", ");
+            updateRouteResult(`<strong>Attention, zones à risque détectées :</strong> ${names}.<br>Distance : ${formatDistance(route.distance)}<br>Cliquez sur "Éviter les zones à risque".`, "warning");
         }
     } catch (error) { updateRouteResult(error.message, "warning"); }
 }
@@ -391,12 +358,92 @@ function setupRoutePlanner() {
     }
 }
 
+function setupMapControls() {
+    const zoomIn = document.getElementById("zoomIn");
+    const zoomOut = document.getElementById("zoomOut");
+    const resetMap = document.getElementById("resetMap");
+
+    if (zoomIn) zoomIn.addEventListener("click", () => map.zoomIn());
+    if (zoomOut) zoomOut.addEventListener("click", () => map.zoomOut());
+    if (resetMap) resetMap.addEventListener("click", () => map.setView([48.8625, 2.35], 13));
+}
+
+function setupModal() {
+    const modalOverlay = document.getElementById("modalOverlay");
+    const openNavbar = document.getElementById("openAlertModalNavbar");
+    const openSide = document.getElementById("openAlertModalSide");
+    const closeButton = document.getElementById("closeModal");
+    const form = document.getElementById("alertForm");
+    const toast = document.getElementById("toast");
+    const btnNow = document.getElementById("btnNow");
+
+    if (btnNow) {
+        btnNow.addEventListener("click", function() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById("time").value = `${hours}:${minutes}`;
+        });
+    }
+
+    if (openNavbar) openNavbar.addEventListener("click", () => modalOverlay.classList.add("active"));
+    if (openSide) openSide.addEventListener("click", () => modalOverlay.classList.add("active"));
+    if (closeButton) closeButton.addEventListener("click", () => modalOverlay.classList.remove("active"));
+
+    if (form) {
+        form.addEventListener("submit", async function(event) {
+            event.preventDefault();
+            const streetValue = document.getElementById("street").value.trim();
+
+            let lat = null, lon = null;
+            try {
+                const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(streetValue + ", Ile-de-France, France");
+                const res = await fetch(url);
+                const geoData = await res.json();
+                if (geoData.length > 0) {
+                    lat = parseFloat(geoData[0].lat);
+                    lon = parseFloat(geoData[0].lon);
+                }
+            } catch(e) { console.error(e); }
+
+            const alertData = {
+                street: streetValue,
+                time: document.getElementById("time").value,
+                riskLevel: document.getElementById("riskLevel").value,
+                message: document.getElementById("message").value,
+                latitude: lat,
+                longitude: lon
+            };
+
+            try {
+                const response = await fetch('add_alert.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(alertData)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    modalOverlay.classList.remove("active");
+                    form.reset();
+                    if (toast) {
+                        toast.textContent = result.message;
+                        toast.classList.add("active");
+                        setTimeout(() => toast.classList.remove("active"), 2500);
+                    }
+                    fetchAlerts();
+                }
+            } catch (error) { alert("Erreur."); }
+        });
+    }
+}
+
 function initHome() {
     setupFilters();
     setupMapControls();
     setupModal();
-    setupOtherButtons();
     setupRoutePlanner();
+    updateStreetLegend();
 
     fetchZones();
     fetchAlerts();
